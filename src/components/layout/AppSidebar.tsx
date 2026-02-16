@@ -8,6 +8,10 @@ import {
   LogOut,
   GraduationCap,
   BookMarked,
+  ShieldCheck,
+  Lightbulb,
+  Banknote,
+  FlaskConical,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,7 +33,11 @@ const publicItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Projects", url: "/projects", icon: FolderOpen },
   { title: "Publications", url: "/publications", icon: BookOpen },
-  { title: "Faculty", url: "/faculty", icon: Users },
+  { title: "Patents", url: "/patents", icon: ShieldCheck },
+  { title: "IP Assets", url: "/ip-assets", icon: Lightbulb },
+  { title: "Funded Projects", url: "/funded-projects", icon: Banknote },
+  { title: "Research Labs", url: "/research-labs", icon: FlaskConical },
+  { title: "Faculty Profiles", url: "/faculty", icon: Users },
 ];
 
 export function AppSidebar() {

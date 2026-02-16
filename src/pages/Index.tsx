@@ -1,24 +1,44 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FolderOpen, BookOpen, Users, Building2, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  FolderOpen,
+  BookOpen,
+  Users,
+  ArrowRight,
+  ShieldCheck,
+  Lightbulb,
+  Plus,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+
+const dashboardTabs = [
+  { key: "projects", label: "Project Access", icon: FolderOpen, color: "bg-primary text-primary-foreground" },
+  { key: "publications", label: "Publications", icon: BookOpen, color: "bg-emerald-600 text-white" },
+  { key: "patents", label: "Patents", icon: ShieldCheck, color: "bg-amber-600 text-white" },
+  { key: "ip-assets", label: "IP Assets", icon: Lightbulb, color: "bg-rose-600 text-white" },
+] as const;
+
+type TabKey = (typeof dashboardTabs)[number]["key"];
 
 export default function Index() {
+  const [activeTab, setActiveTab] = useState<TabKey>("projects");
+
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
-      const [projects, publications, faculty, departments] = await Promise.all([
+      const [projects, publications, faculty] = await Promise.all([
         supabase.from("projects").select("id", { count: "exact", head: true }).eq("status", "approved"),
         supabase.from("publications").select("id", { count: "exact", head: true }).eq("status", "approved"),
         supabase.from("faculty").select("id", { count: "exact", head: true }),
-        supabase.from("departments").select("id", { count: "exact", head: true }),
       ]);
       return {
         projects: projects.count ?? 0,
         publications: publications.count ?? 0,
         faculty: faculty.count ?? 0,
-        departments: departments.count ?? 0,
       };
     },
   });
@@ -49,96 +69,106 @@ export default function Index() {
     },
   });
 
-  const statCards = [
-    { label: "Projects", value: stats?.projects ?? 0, icon: FolderOpen, href: "/projects", color: "text-primary" },
-    { label: "Publications", value: stats?.publications ?? 0, icon: BookOpen, href: "/publications", color: "text-emerald-600" },
-    { label: "Faculty", value: stats?.faculty ?? 0, icon: Users, href: "/faculty", color: "text-amber-600" },
-    { label: "Departments", value: stats?.departments ?? 0, icon: Building2, href: "#", color: "text-violet-600" },
+  const quickAccessCards = [
+    { label: "Publications This Year", value: stats?.publications ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Projects Submitted", value: stats?.projects ?? 0, icon: FolderOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
+    { label: "Patents Filed", value: 0, icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-100" },
+    { label: "IPs Registered", value: 0, icon: Lightbulb, color: "text-rose-600", bg: "bg-rose-100" },
   ];
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Research Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Explore institutional research, projects, and faculty profiles
-        </p>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => (
-          <Link key={stat.label} to={stat.href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className={`p-3 rounded-lg bg-muted ${stat.color}`}>
-                  <stat.icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2">
+        {dashboardTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
+              activeTab === tab.key
+                ? tab.color
+                : "bg-muted text-muted-foreground hover:bg-accent"
+            )}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
         ))}
       </div>
 
-      {/* Recent */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Recent Projects</CardTitle>
-            <Link to="/projects" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentProjects?.length === 0 && (
-              <p className="text-muted-foreground text-sm py-4">No projects yet</p>
-            )}
-            <div className="space-y-3">
-              {recentProjects?.map((p: any) => (
-                <Link
-                  key={p.id}
-                  to={`/projects/${p.id}`}
-                  className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <p className="font-medium text-sm">{p.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {p.departments?.name} • {p.year} {p.domain && `• ${p.domain}`}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Quick Access */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-foreground">Quick Access</h2>
+          <Button size="sm" className="gap-1">
+            <Plus className="h-4 w-4" />
+            Add New Project
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {quickAccessCards.map((card) => (
+            <Card key={card.label} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className={cn("p-2 rounded-lg", card.bg, card.color)}>
+                  <card.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-foreground">{card.value}</p>
+                  <p className="text-xs text-muted-foreground leading-tight">{card.label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
 
+      {/* Recent Additions */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Recent Additions</h2>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Recent Publications</CardTitle>
-            <Link to="/publications" className="text-sm text-primary hover:underline flex items-center gap-1">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentPublications?.length === 0 && (
-              <p className="text-muted-foreground text-sm py-4">No publications yet</p>
-            )}
-            <div className="space-y-3">
-              {recentPublications?.map((p: any) => (
-                <Link
-                  key={p.id}
-                  to={`/publications/${p.id}`}
-                  className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <p className="font-medium text-sm">{p.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {p.faculty?.name} • {p.year} {p.journal && `• ${p.journal}`}
+          <CardContent className="p-0 divide-y">
+            {recentProjects?.map((p: any) => (
+              <Link
+                key={p.id}
+                to={`/projects/${p.id}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="p-2 rounded bg-primary/10">
+                  <FolderOpen className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm text-primary truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.departments?.name} • {p.year}
                   </p>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
+            {recentPublications?.map((p: any) => (
+              <Link
+                key={p.id}
+                to={`/publications/${p.id}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="p-2 rounded bg-emerald-100">
+                  <BookOpen className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm text-primary truncate">{p.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.faculty?.name} • {p.year}
+                  </p>
+                </div>
+              </Link>
+            ))}
+            {(!recentProjects?.length && !recentPublications?.length) && (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">
+                No recent additions yet
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

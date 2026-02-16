@@ -12,6 +12,10 @@ import Publications from "./pages/Publications";
 import PublicationDetail from "./pages/PublicationDetail";
 import Faculty from "./pages/Faculty";
 import FacultyProfile from "./pages/FacultyProfile";
+import Patents from "./pages/Patents";
+import IPAssets from "./pages/IPAssets";
+import FundedProjects from "./pages/FundedProjects";
+import ResearchLabs from "./pages/ResearchLabs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
@@ -40,6 +44,10 @@ const App = () => (
                     <Route path="/publications/:id" element={<PublicationDetail />} />
                     <Route path="/faculty" element={<Faculty />} />
                     <Route path="/faculty/:id" element={<FacultyProfile />} />
+                    <Route path="/patents" element={<Patents />} />
+                    <Route path="/ip-assets" element={<IPAssets />} />
+                    <Route path="/funded-projects" element={<FundedProjects />} />
+                    <Route path="/research-labs" element={<ResearchLabs />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>
