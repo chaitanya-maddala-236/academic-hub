@@ -32,22 +32,29 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  ExternalLink,
+  User,
+  Calendar,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
 
+type TabKey = "all" | "journals";
+
 export default function Publications() {
   const [search, setSearch] = useState("");
   const [sortYear, setSortYear] = useState("desc");
-  const [activeTab, setActiveTab] = useState<"all" | "journal" | "conference">("all");
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Side filter state
   const [filterYears, setFilterYears] = useState<number[]>([]);
-  const [filterDepartment, setFilterDepartment] = useState("all");
+  const [filterDepartments, setFilterDepartments] = useState<string[]>([]);
+  const [filterPubType, setFilterPubType] = useState<string[]>([]);
+  const [filterScope, setFilterScope] = useState<string[]>([]);
+  const [filterIndexing, setFilterIndexing] = useState<string[]>([]);
 
   const { data: publications, isLoading } = useQuery({
     queryKey: ["publications"],
@@ -68,314 +75,281 @@ export default function Publications() {
     },
   });
 
-  // Compute stats
   const stats = useMemo(() => {
-    if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0 };
+    if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0, indexed: 0, yearRange: "" };
+    const yrs = publications.map((p: any) => p.year).filter(Boolean);
+    const minY = yrs.length ? Math.min(...yrs) : 0;
+    const maxY = yrs.length ? Math.max(...yrs) : 0;
     return {
       total: publications.length,
       journals: publications.filter((p: any) => p.journal).length,
-      conferences: publications.filter((p: any) => p.conference).length,
-      international: publications.filter((p: any) =>
-        p.journal?.toLowerCase().includes("international") ||
-        p.conference?.toLowerCase().includes("international")
-      ).length,
-      national: publications.filter((p: any) =>
-        p.journal?.toLowerCase().includes("national") ||
-        p.conference?.toLowerCase().includes("national") ||
-        (!p.journal?.toLowerCase().includes("international") && !p.conference?.toLowerCase().includes("international"))
-      ).length,
+      conferences: publications.filter((p: any) => p.conference && !p.journal).length,
+      international: publications.filter((p: any) => p.pub_type === "international").length,
+      national: publications.filter((p: any) => p.pub_type === "national" || (!p.pub_type && !p.journal?.toLowerCase().includes("international"))).length,
+      indexed: publications.filter((p: any) => p.indexing && p.indexing.length > 0).length,
+      yearRange: minY && maxY ? `${minY} - ${maxY}` : "",
     };
   }, [publications]);
 
-  // Available years
   const years = useMemo(() => {
     if (!publications) return [];
-    const yrs = [...new Set(publications.map((p: any) => p.year))].sort((a, b) => b - a);
-    return yrs;
+    return [...new Set(publications.map((p: any) => p.year))].sort((a, b) => b - a);
   }, [publications]);
 
-  // Filtered & sorted
+  const allIndexTypes = useMemo(() => {
+    if (!publications) return [];
+    const s = new Set<string>();
+    publications.forEach((p: any) => p.indexing?.forEach((i: string) => s.add(i)));
+    return [...s].sort();
+  }, [publications]);
+
   const filtered = useMemo(() => {
     if (!publications) return [];
     let result = [...publications];
 
-    // Tab filter
-    if (activeTab === "journal") result = result.filter((p: any) => p.journal);
-    if (activeTab === "conference") result = result.filter((p: any) => p.conference && !p.journal);
+    if (activeTab === "journals") result = result.filter((p: any) => p.journal);
 
-    // Search
     if (search) {
       const s = search.toLowerCase();
       result = result.filter(
         (p: any) =>
           p.title?.toLowerCase().includes(s) ||
-          p.abstract?.toLowerCase().includes(s) ||
+          p.authors?.toLowerCase().includes(s) ||
           p.faculty?.name?.toLowerCase().includes(s) ||
-          p.keywords?.some((k: string) => k.toLowerCase().includes(s))
+          p.journal?.toLowerCase().includes(s) ||
+          p.conference?.toLowerCase().includes(s)
       );
     }
 
-    // Year filter
-    if (filterYears.length > 0) {
-      result = result.filter((p: any) => filterYears.includes(p.year));
+    if (filterYears.length > 0) result = result.filter((p: any) => filterYears.includes(p.year));
+    if (filterDepartments.length > 0) result = result.filter((p: any) => filterDepartments.includes(p.faculty?.department_id));
+    if (filterPubType.length > 0) {
+      result = result.filter((p: any) => {
+        if (filterPubType.includes("journal") && p.journal) return true;
+        if (filterPubType.includes("conference") && p.conference && !p.journal) return true;
+        return false;
+      });
     }
+    if (filterScope.length > 0) result = result.filter((p: any) => filterScope.includes(p.pub_type));
+    if (filterIndexing.length > 0) result = result.filter((p: any) => p.indexing?.some((i: string) => filterIndexing.includes(i)));
 
-    // Department filter
-    if (filterDepartment !== "all") {
-      result = result.filter((p: any) => p.faculty?.department_id === filterDepartment);
-    }
-
-    // Sort
-    result.sort((a: any, b: any) =>
-      sortYear === "desc" ? b.year - a.year : a.year - b.year
-    );
-
+    result.sort((a: any, b: any) => sortYear === "desc" ? b.year - a.year : a.year - b.year);
     return result;
-  }, [publications, activeTab, search, filterYears, filterDepartment, sortYear]);
+  }, [publications, activeTab, search, filterYears, filterDepartments, filterPubType, filterScope, filterIndexing, sortYear]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const toggleYear = (y: number) => {
-    setFilterYears((prev) =>
-      prev.includes(y) ? prev.filter((v) => v !== y) : [...prev, y]
-    );
+  const toggleFilter = <T,>(setter: React.Dispatch<React.SetStateAction<T[]>>, value: T) => {
+    setter((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
     setPage(1);
   };
 
   const clearFilters = () => {
     setFilterYears([]);
-    setFilterDepartment("all");
+    setFilterDepartments([]);
+    setFilterPubType([]);
+    setFilterScope([]);
+    setFilterIndexing([]);
     setPage(1);
   };
 
-  const statCards = [
-    { label: "Total Publications", value: stats.total, icon: BookOpen, color: "text-primary" },
-    { label: "Journal Publications", value: stats.journals, icon: FileText, color: "text-emerald-600" },
-    { label: "Conference Publications", value: stats.conferences, icon: BookOpen, color: "text-amber-600" },
-    { label: "International", value: stats.international, icon: Globe, color: "text-violet-600" },
-    { label: "National", value: stats.national, icon: Flag, color: "text-rose-600" },
-  ];
+  const activeFilterCount = filterYears.length + filterDepartments.length + filterPubType.length + filterScope.length + filterIndexing.length;
 
-  const tabs = [
-    { key: "all" as const, label: "All" },
-    { key: "journal" as const, label: "Journals" },
-    { key: "conference" as const, label: "Conferences" },
-  ];
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    const pages: number[] = [];
+    for (let i = 1; i <= Math.min(totalPages, 7); i++) pages.push(i);
+
+    return (
+      <div className="flex items-center justify-center gap-1 py-4">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+          <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+        </Button>
+        {pages.map((p) => (
+          <Button key={p} variant={page === p ? "default" : "outline"} size="icon" className="h-8 w-8 text-xs" onClick={() => setPage(p)}>
+            {p}
+          </Button>
+        ))}
+        {totalPages > 7 && <span className="px-2 text-muted-foreground">...</span>}
+        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+          Next <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-primary rounded-xl px-6 py-5 text-primary-foreground">
-        <h1 className="text-2xl md:text-3xl font-bold">Research & Publications</h1>
-        <p className="text-primary-foreground/80 mt-1 text-sm">
-          Research Output of the Institution
-        </p>
+      <div className="bg-primary rounded-xl px-6 py-6 text-primary-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-wide uppercase">Publications</h1>
+        <div className="w-12 h-1 bg-primary-foreground/60 mt-2 rounded" />
+        <p className="text-primary-foreground/80 mt-2 text-sm">Research Output of the Institution</p>
       </div>
 
-      {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {statCards.map((stat) => (
-          <Card
-            key={stat.label}
-            className="hover:shadow-md transition-shadow cursor-default group"
-          >
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={cn("p-2 rounded-lg bg-muted", stat.color)}>
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground leading-tight">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Search, Filter, Sort, Tabs */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search by title, author, department..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filter
-          </Button>
-          <Select value={sortYear} onValueChange={setSortYear}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Sort By" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="desc">Year: Newest</SelectItem>
-              <SelectItem value="asc">Year: Oldest</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Search & Controls */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search by Title / Faculty / Journal..." className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
+        <Button variant="outline" className="gap-2" onClick={() => setShowFilters(!showFilters)}>
+          <SlidersHorizontal className="h-4 w-4" />
+          Filter
+          {activeFilterCount > 0 && <Badge variant="secondary" className="ml-1 text-xs">{activeFilterCount}</Badge>}
+        </Button>
+        <Select value={sortYear} onValueChange={setSortYear}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Sort By" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">Year: Newest</SelectItem>
+            <SelectItem value="asc">Year: Oldest</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => {
-                setActiveTab(tab.key);
-                setPage(1);
-              }}
-              className={cn(
-                "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                activeTab === tab.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-accent"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Stats / Tab Bar */}
+      <div className="flex flex-wrap items-center gap-4 border-b pb-3">
+        <button onClick={() => { setActiveTab("all"); setPage(1); }} className={cn("flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors", activeTab === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}>
+          <span className={cn("w-2 h-2 rounded-full", activeTab === "all" ? "bg-primary-foreground" : "bg-muted-foreground")} />
+          All
+        </button>
+        <button onClick={() => { setActiveTab("journals"); setPage(1); }} className={cn("flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors", activeTab === "journals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}>
+          Journals
+        </button>
+        <div className="hidden sm:flex items-center gap-4 ml-auto text-xs text-muted-foreground">
+          {stats.yearRange && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{stats.yearRange}</span>}
+          <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{stats.indexed} Indexed</span>
+          <span className="flex items-center gap-1"><Globe className="h-3.5 w-3.5" />{stats.international} International</span>
+          <span className="flex items-center gap-1"><Flag className="h-3.5 w-3.5" />{stats.national} National</span>
         </div>
       </div>
 
-      {/* Main content with optional side filter */}
+      {/* Main content */}
       <div className="flex gap-6">
-        {/* Table */}
         <div className="flex-1 min-w-0">
-          <Card>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-12">S.No</TableHead>
-                    <TableHead>Faculty</TableHead>
-                    <TableHead className="hidden md:table-cell">Title</TableHead>
-                    <TableHead className="hidden lg:table-cell">Journal / Conference</TableHead>
-                    <TableHead className="hidden sm:table-cell">Year</TableHead>
-                    <TableHead className="hidden lg:table-cell">Keywords</TableHead>
-                    <TableHead className="w-24">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                        Loading publications...
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {!isLoading && paginated.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                        No publications found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {paginated.map((pub: any, idx: number) => (
-                    <TableRow key={pub.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="text-muted-foreground text-sm">
-                        {(page - 1) * ITEMS_PER_PAGE + idx + 1}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{pub.faculty?.name ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(pub.faculty as any)?.departments?.name ?? ""}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell max-w-xs">
-                        <p className="font-semibold text-sm text-foreground line-clamp-2">
+          {isLoading && <div className="text-center py-16 text-muted-foreground">Loading publications...</div>}
+          {!isLoading && paginated.length === 0 && <div className="text-center py-16 text-muted-foreground">No publications found</div>}
+
+          {/* All tab — Card layout */}
+          {activeTab === "all" && !isLoading && paginated.length > 0 && (
+            <div className="space-y-4">
+              {paginated.map((pub: any, idx: number) => (
+                <Card key={pub.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-snug">
+                          <span className="text-muted-foreground mr-2">{(page - 1) * ITEMS_PER_PAGE + idx + 1}.</span>
                           {pub.title}
                         </p>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {pub.journal && (
-                          <span className="text-xs text-muted-foreground">{pub.journal}</span>
-                        )}
-                        {pub.conference && (
-                          <span className="text-xs text-muted-foreground">{pub.conference}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">{pub.year}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {pub.keywords?.slice(0, 2).map((k: string) => (
-                            <Badge key={k} variant="secondary" className="text-xs">
-                              {k}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Button asChild size="sm" variant="default" className="gap-1 text-xs">
-                          <Link to={`/publications/${pub.id}`}>
-                            <Eye className="h-3 w-3" />
-                            View
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Showing {(page - 1) * ITEMS_PER_PAGE + 1}–
-                  {Math.min(page * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
-                </p>
-                <div className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const p = i + 1;
-                    return (
-                      <Button
-                        key={p}
-                        variant={page === p ? "default" : "outline"}
-                        size="icon"
-                        className="h-8 w-8 text-xs"
-                        onClick={() => setPage(p)}
-                      >
-                        {p}
+                      </div>
+                      <Button asChild size="sm" variant="default" className="shrink-0 gap-1 text-xs">
+                        <Link to={`/publications/${pub.id}`}><Eye className="h-3 w-3" /> View Details</Link>
                       </Button>
-                    );
-                  })}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 mt-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground text-xs">Faculty</span>
+                        <p className="font-medium">{pub.faculty?.name ?? "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Authors</span>
+                        <p className="font-medium">{pub.authors ?? "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">{pub.journal ? "Journal" : "Conference"}</span>
+                        <p className="font-medium">{pub.journal || pub.conference || "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Publisher</span>
+                        <p className="font-medium">{pub.publisher ?? "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Type</span>
+                        <p className="font-medium capitalize">{pub.pub_type ?? "—"}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Year</span>
+                        <p className="font-medium">{pub.year}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center flex-wrap gap-2 mt-3">
+                      {pub.indexing?.map((tag: string) => (
+                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                      ))}
+                      {pub.doi && (
+                        <a href={`https://doi.org/${pub.doi}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline ml-auto">
+                          <ExternalLink className="h-3 w-3" /> Open DOI
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {renderPagination()}
+            </div>
+          )}
+
+          {/* Journals tab — Table layout */}
+          {activeTab === "journals" && !isLoading && paginated.length > 0 && (
+            <div>
+              <div className="bg-primary/10 px-4 py-2 rounded-t-lg">
+                <h2 className="text-sm font-bold text-primary uppercase tracking-wider">Journal Publications</h2>
               </div>
-            )}
-          </Card>
+              <Card className="rounded-t-none">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-12">S.No</TableHead>
+                        <TableHead>Faculty Name</TableHead>
+                        <TableHead className="hidden md:table-cell">Author(s)</TableHead>
+                        <TableHead>Title / Journal</TableHead>
+                        <TableHead className="hidden sm:table-cell">Year</TableHead>
+                        <TableHead className="hidden lg:table-cell">Indexing</TableHead>
+                        <TableHead className="w-28">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginated.map((pub: any, idx: number) => (
+                        <TableRow key={pub.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="text-muted-foreground text-sm">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</TableCell>
+                          <TableCell>
+                            <p className="font-medium text-sm">{pub.faculty?.name ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground">{(pub.faculty as any)?.departments?.name ?? ""}</p>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-sm">{pub.authors ?? "—"}</TableCell>
+                          <TableCell className="max-w-xs">
+                            <p className="font-semibold text-sm line-clamp-2">{pub.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{pub.journal}</p>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm">{pub.year}</TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {pub.indexing?.map((k: string) => (
+                                <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button asChild size="sm" variant="default" className="gap-1 text-xs">
+                              <Link to={`/publications/${pub.id}`}><Eye className="h-3 w-3" /> View</Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+              {renderPagination()}
+            </div>
+          )}
         </div>
 
         {/* Side Filter Panel */}
@@ -385,88 +359,83 @@ export default function Publications() {
               <CardContent className="p-4 space-y-5">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm">Filters</h3>
-                  <button onClick={() => setShowFilters(false)}>
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  <button onClick={() => setShowFilters(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
                 </div>
 
                 {/* Publication Type */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                    Publication Type
-                  </p>
-                  <div className="space-y-2">
-                    {tabs.map((tab) => (
-                      <label key={tab.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={activeTab === tab.key}
-                          onCheckedChange={() => {
-                            setActiveTab(tab.key);
-                            setPage(1);
-                          }}
-                        />
-                        {tab.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <FilterSection title="Publication Type">
+                  {[{ key: "journal", label: "Journal" }, { key: "conference", label: "Conference" }].map((t) => (
+                    <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={filterPubType.includes(t.key)} onCheckedChange={() => toggleFilter(setFilterPubType, t.key)} />
+                      {t.label}
+                    </label>
+                  ))}
+                </FilterSection>
 
                 {/* Year */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                    Year
-                  </p>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                <FilterSection title="Year">
+                  <div className="max-h-36 overflow-y-auto space-y-1.5">
                     {years.map((y) => (
                       <label key={y} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox
-                          checked={filterYears.includes(y)}
-                          onCheckedChange={() => toggleYear(y)}
-                        />
+                        <Checkbox checked={filterYears.includes(y)} onCheckedChange={() => toggleFilter(setFilterYears, y)} />
                         {y}
                       </label>
                     ))}
                   </div>
-                </div>
+                </FilterSection>
 
                 {/* Department */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-                    Department
-                  </p>
-                  <Select value={filterDepartment} onValueChange={(v) => { setFilterDepartment(v); setPage(1); }}>
-                    <SelectTrigger className="w-full text-sm">
-                      <SelectValue placeholder="All Departments" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Departments</SelectItem>
-                      {departments?.map((d: any) => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <FilterSection title="Department">
+                  <div className="max-h-36 overflow-y-auto space-y-1.5">
+                    {departments?.map((d: any) => (
+                      <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox checked={filterDepartments.includes(d.id)} onCheckedChange={() => toggleFilter(setFilterDepartments, d.id)} />
+                        {d.code || d.name}
+                      </label>
+                    ))}
+                  </div>
+                </FilterSection>
+
+                {/* Scope */}
+                <FilterSection title="National / International">
+                  {["national", "international"].map((s) => (
+                    <label key={s} className="flex items-center gap-2 text-sm cursor-pointer capitalize">
+                      <Checkbox checked={filterScope.includes(s)} onCheckedChange={() => toggleFilter(setFilterScope, s)} />
+                      {s}
+                    </label>
+                  ))}
+                </FilterSection>
+
+                {/* Indexing */}
+                {allIndexTypes.length > 0 && (
+                  <FilterSection title="Indexing">
+                    {allIndexTypes.map((idx) => (
+                      <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox checked={filterIndexing.includes(idx)} onCheckedChange={() => toggleFilter(setFilterIndexing, idx)} />
+                        {idx}
+                      </label>
+                    ))}
+                  </FilterSection>
+                )}
 
                 <div className="pt-2 space-y-2">
-                  <Button
-                    className="w-full"
-                    size="sm"
-                    onClick={() => setShowFilters(false)}
-                  >
-                    Apply Filters
-                  </Button>
-                  <button
-                    className="text-xs text-primary hover:underline w-full text-center"
-                    onClick={clearFilters}
-                  >
-                    Clear Filters
-                  </button>
+                  <Button className="w-full" size="sm" onClick={() => setShowFilters(false)}>Apply Filters</Button>
+                  <button className="text-xs text-primary hover:underline w-full text-center" onClick={clearFilters}>Clear Filters</button>
                 </div>
               </CardContent>
             </Card>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">{title}</p>
+      <div className="space-y-1.5">{children}</div>
     </div>
   );
 }
