@@ -1,6 +1,13 @@
 const pool = require('../config/db');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, '..', 'uploads', 'materials');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -70,8 +77,9 @@ const getAllMaterials = async (req, res) => {
 
     // Get total count
     const countResult = await pool.query(
-      queryText.replace('tm.*, f.name as faculty_name, f.department as faculty_department', 'COUNT(*)')
-    , queryParams);
+      queryText.replace('tm.*, f.name as faculty_name, f.department as faculty_department', 'COUNT(*)'),
+      queryParams
+    );
     const total = parseInt(countResult.rows[0].count);
 
     // Get paginated results

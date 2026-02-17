@@ -35,8 +35,9 @@ const getAllAwards = async (req, res) => {
 
     // Get total count
     const countResult = await pool.query(
-      queryText.replace('a.*, f.name as faculty_name, f.department as faculty_department', 'COUNT(*)')
-    , queryParams);
+      queryText.replace('a.*, f.name as faculty_name, f.department as faculty_department', 'COUNT(*)'),
+      queryParams
+    );
     const total = parseInt(countResult.rows[0].count);
 
     // Get paginated results
