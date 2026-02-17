@@ -119,4 +119,4 @@ CREATE INDEX idx_labs_department ON research_labs(department);
 -- Insert a default admin user (password: admin123)
 -- Password hash for 'admin123' using bcrypt
 INSERT INTO users (email, password, role) VALUES 
-('admin@university.edu', '$2b$10$rKvVBKp/YLWJxLQQZJz9KuGwYhJYFQH8FqLVZqK8KqQzxqz8KqQzx', 'admin');
+('admin@university.edu', '$2b$10$gIMLW.4dH1f41VRIzUYwiePTXi8InLDhqCySWLx9doNGhu9XDvGqu', 'admin');
