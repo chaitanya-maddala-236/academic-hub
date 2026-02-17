@@ -96,9 +96,9 @@ const createLab = async (req, res, next) => {
 
     const result = await pool.query(
       `INSERT INTO research_labs 
-       (name, department, head, description, focus_areas, established_year, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [name, department, head, description, focus_areas, established_year, imagePath]
+       (name, department, head, description, focus_areas, established_year, image_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [name, department, head, description, focus_areas, established_year, imagePath, req.user?.id || null]
     );
 
     res.status(201).json({
@@ -139,7 +139,8 @@ const updateLab = async (req, res, next) => {
            description = COALESCE($4, description),
            focus_areas = COALESCE($5, focus_areas),
            established_year = COALESCE($6, established_year),
-           image_url = COALESCE($7, image_url)
+           image_url = COALESCE($7, image_url),
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $8
        RETURNING *`,
       [name, department, head, description, focus_areas, established_year, imagePath, id]

@@ -144,6 +144,16 @@ const createProject = async (req, res, next) => {
   try {
     const {
       title,
+      principal_investigator,
+      co_principal_investigator,
+      department,
+      funding_agency,
+      agency_scientist,
+      file_number,
+      sanctioned_amount,
+      funds_per_year,
+      start_date,
+      end_date,
       agency,
       agency_scientist,
       file_number,
@@ -164,8 +174,18 @@ const createProject = async (req, res, next) => {
     // Calculate initial status
     const status = calculateProjectStatus(start_date, end_date);
 
+    // Ensure funds_per_year is properly formatted as JSON
+    const fundsPerYearJson = funds_per_year ? JSON.stringify(funds_per_year) : null;
+
     const result = await pool.query(
       `INSERT INTO funded_projects 
+       (title, principal_investigator, co_principal_investigator, department, funding_agency, 
+        agency_scientist, file_number, sanctioned_amount, funds_per_year, start_date, end_date,
+        objectives, deliverables, outcomes, team, status, pdf_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+      [title, principal_investigator, co_principal_investigator, department, funding_agency,
+       agency_scientist, file_number, sanctioned_amount, fundsPerYearJson, start_date, end_date,
+       objectives, deliverables, outcomes, team, status, pdf_url, req.user?.id || null]
        (title, agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, start_date, end_date, pi, copi, objectives, deliverables, outcomes, team, department, status, pdf_url, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
       [title, agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, start_date, end_date, pi, copi, objectives, deliverables, outcomes, team, department, status, pdf_url, req.user?.id]
@@ -190,6 +210,16 @@ const updateProject = async (req, res, next) => {
     const { id } = req.params;
     const {
       title,
+      principal_investigator,
+      co_principal_investigator,
+      department,
+      funding_agency,
+      agency_scientist,
+      file_number,
+      sanctioned_amount,
+      funds_per_year,
+      start_date,
+      end_date,
       agency,
       agency_scientist,
       file_number,
@@ -221,9 +251,34 @@ const updateProject = async (req, res, next) => {
     const newEndDate = end_date || currentProject.rows[0].end_date;
     const status = calculateProjectStatus(newStartDate, newEndDate);
 
+    // Ensure funds_per_year is properly formatted as JSON if provided
+    const fundsPerYearJson = funds_per_year ? JSON.stringify(funds_per_year) : undefined;
+
     const result = await pool.query(
       `UPDATE funded_projects
        SET title = COALESCE($1, title),
+           principal_investigator = COALESCE($2, principal_investigator),
+           co_principal_investigator = COALESCE($3, co_principal_investigator),
+           department = COALESCE($4, department),
+           funding_agency = COALESCE($5, funding_agency),
+           agency_scientist = COALESCE($6, agency_scientist),
+           file_number = COALESCE($7, file_number),
+           sanctioned_amount = COALESCE($8, sanctioned_amount),
+           funds_per_year = COALESCE($9, funds_per_year),
+           start_date = COALESCE($10, start_date),
+           end_date = COALESCE($11, end_date),
+           objectives = COALESCE($12, objectives),
+           deliverables = COALESCE($13, deliverables),
+           outcomes = COALESCE($14, outcomes),
+           team = COALESCE($15, team),
+           pdf_url = COALESCE($16, pdf_url),
+           status = $17,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $18
+       RETURNING *`,
+      [title, principal_investigator, co_principal_investigator, department, funding_agency,
+       agency_scientist, file_number, sanctioned_amount, fundsPerYearJson, start_date, end_date,
+       objectives, deliverables, outcomes, team, pdf_url, status, id]
            agency = COALESCE($2, agency),
            agency_scientist = COALESCE($3, agency_scientist),
            file_number = COALESCE($4, file_number),

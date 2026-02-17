@@ -94,18 +94,31 @@ const createIpAsset = async (req, res, next) => {
       name,
       type,
       owner,
+      inventors,
       department,
       filing_year,
+      filing_date,
+      published_date,
+      granted_date,
       expiry_date,
       status,
-      commercialized
+      application_number,
+      registration_number,
+      description,
+      pdf_url,
+      commercialized,
+      faculty_id
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO ip_assets 
-       (name, type, owner, department, filing_year, expiry_date, status, commercialized)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [name, type, owner, department, filing_year, expiry_date, status, commercialized || false]
+       (name, type, owner, inventors, department, filing_year, filing_date, published_date, 
+        granted_date, expiry_date, status, application_number, registration_number, description, 
+        pdf_url, commercialized, faculty_id, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+      [name, type, owner, inventors, department, filing_year, filing_date, published_date,
+       granted_date, expiry_date, status, application_number, registration_number, description,
+       pdf_url, commercialized || false, faculty_id, req.user?.id || null]
     );
 
     res.status(201).json({
@@ -126,11 +139,20 @@ const updateIpAsset = async (req, res, next) => {
       name,
       type,
       owner,
+      inventors,
       department,
       filing_year,
+      filing_date,
+      published_date,
+      granted_date,
       expiry_date,
       status,
-      commercialized
+      application_number,
+      registration_number,
+      description,
+      pdf_url,
+      commercialized,
+      faculty_id
     } = req.body;
 
     const result = await pool.query(
@@ -138,14 +160,26 @@ const updateIpAsset = async (req, res, next) => {
        SET name = COALESCE($1, name),
            type = COALESCE($2, type),
            owner = COALESCE($3, owner),
-           department = COALESCE($4, department),
-           filing_year = COALESCE($5, filing_year),
-           expiry_date = COALESCE($6, expiry_date),
-           status = COALESCE($7, status),
-           commercialized = COALESCE($8, commercialized)
-       WHERE id = $9
+           inventors = COALESCE($4, inventors),
+           department = COALESCE($5, department),
+           filing_year = COALESCE($6, filing_year),
+           filing_date = COALESCE($7, filing_date),
+           published_date = COALESCE($8, published_date),
+           granted_date = COALESCE($9, granted_date),
+           expiry_date = COALESCE($10, expiry_date),
+           status = COALESCE($11, status),
+           application_number = COALESCE($12, application_number),
+           registration_number = COALESCE($13, registration_number),
+           description = COALESCE($14, description),
+           pdf_url = COALESCE($15, pdf_url),
+           commercialized = COALESCE($16, commercialized),
+           faculty_id = COALESCE($17, faculty_id),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $18
        RETURNING *`,
-      [name, type, owner, department, filing_year, expiry_date, status, commercialized, id]
+      [name, type, owner, inventors, department, filing_year, filing_date, published_date,
+       granted_date, expiry_date, status, application_number, registration_number, description,
+       pdf_url, commercialized, faculty_id, id]
     );
 
     if (result.rows.length === 0) {

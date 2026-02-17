@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const pool = require('./config/db');
 const errorHandler = require('./middleware/error.middleware');
+const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -14,6 +15,10 @@ const patentsRoutes = require('./routes/patents.routes');
 const ipAssetsRoutes = require('./routes/ipAssets.routes');
 const projectsRoutes = require('./routes/projects.routes');
 const labsRoutes = require('./routes/labs.routes');
+const consultancyRoutes = require('./routes/consultancy.routes');
+const materialsRoutes = require('./routes/materials.routes');
+const awardsRoutes = require('./routes/awards.routes');
+const studentProjectsRoutes = require('./routes/studentProjects.routes');
 const researchCentersRoutes = require('./routes/researchCenters.routes');
 const iprRoutes = require('./routes/ipr.routes');
 const consultancyRoutes = require('./routes/consultancy.routes');
@@ -33,6 +38,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -51,8 +59,14 @@ app.use('/api/faculty', facultyRoutes);
 app.use('/api/publications', publicationsRoutes);
 app.use('/api/patents', patentsRoutes);
 app.use('/api/ip-assets', ipAssetsRoutes);
+app.use('/api/ipr', ipAssetsRoutes); // IPR alias for ip-assets
 app.use('/api/projects', projectsRoutes);
 app.use('/api/labs', labsRoutes);
+app.use('/api/research-centers', labsRoutes); // Research centers alias for labs
+app.use('/api/consultancy', consultancyRoutes);
+app.use('/api/materials', materialsRoutes);
+app.use('/api/awards', awardsRoutes);
+app.use('/api/student-projects', studentProjectsRoutes);
 app.use('/api/research-centers', researchCentersRoutes);
 app.use('/api/ipr', iprRoutes);
 app.use('/api/consultancy', consultancyRoutes);

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
 const { register, login, getCurrentUser, logout } = require('../controllers/auth.controller');
+const { authenticate } = require('../middleware/auth.middleware');
+const { authLimiter } = require('../middleware/rateLimiter.middleware');
 const { verifyToken } = require('../middleware/auth.middleware');
 
 // Validation rules
@@ -16,6 +18,11 @@ const loginValidation = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
+// Routes - apply stricter rate limiting to auth routes
+router.post('/register', authLimiter, registerValidation, register);
+router.post('/login', authLimiter, loginValidation, login);
+router.get('/me', authenticate, getCurrentUser);
+router.post('/logout', authenticate, logout);
 // Routes
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);

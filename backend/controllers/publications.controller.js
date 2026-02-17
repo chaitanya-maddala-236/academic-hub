@@ -127,14 +127,15 @@ const createPublication = async (req, res, next) => {
       year,
       indexing,
       national_international,
-      faculty_id
+      faculty_id,
+      pdf_url
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO publications 
-       (title, journal_name, publication_type, year, indexing, national_international, faculty_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [title, journal_name, publication_type, year, indexing, national_international, faculty_id]
+       (title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, req.user?.id || null]
     );
 
     res.status(201).json({
@@ -158,7 +159,8 @@ const updatePublication = async (req, res, next) => {
       year,
       indexing,
       national_international,
-      faculty_id
+      faculty_id,
+      pdf_url
     } = req.body;
 
     const result = await pool.query(
@@ -169,10 +171,12 @@ const updatePublication = async (req, res, next) => {
            year = COALESCE($4, year),
            indexing = COALESCE($5, indexing),
            national_international = COALESCE($6, national_international),
-           faculty_id = COALESCE($7, faculty_id)
-       WHERE id = $8
+           faculty_id = COALESCE($7, faculty_id),
+           pdf_url = COALESCE($8, pdf_url),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $9
        RETURNING *`,
-      [title, journal_name, publication_type, year, indexing, national_international, faculty_id, id]
+      [title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, id]
     );
 
     if (result.rows.length === 0) {
