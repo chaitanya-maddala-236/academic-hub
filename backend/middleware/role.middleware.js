@@ -18,4 +18,7 @@ const authorizeRole = (...roles) => {
   };
 };
 
-module.exports = { authorizeRole };
+// Alias for consistency with usage in routes
+const requireRole = authorizeRole;
+
+module.exports = { authorizeRole, requireRole };
