@@ -190,53 +190,74 @@ export type Database = {
       publications: {
         Row: {
           abstract: string | null
+          authors: string | null
           conference: string | null
           created_at: string
           doi: string | null
           faculty_id: string | null
           id: string
+          indexing: string[] | null
           journal: string | null
           keywords: string[] | null
+          pages: string | null
           pdf_url: string | null
+          pub_type: string | null
+          publication_date: string | null
+          publisher: string | null
           scholar_url: string | null
           status: string
           submitted_by: string | null
           title: string
           updated_at: string
+          volume_issue: string | null
           year: number
         }
         Insert: {
           abstract?: string | null
+          authors?: string | null
           conference?: string | null
           created_at?: string
           doi?: string | null
           faculty_id?: string | null
           id?: string
+          indexing?: string[] | null
           journal?: string | null
           keywords?: string[] | null
+          pages?: string | null
           pdf_url?: string | null
+          pub_type?: string | null
+          publication_date?: string | null
+          publisher?: string | null
           scholar_url?: string | null
           status?: string
           submitted_by?: string | null
           title: string
           updated_at?: string
+          volume_issue?: string | null
           year?: number
         }
         Update: {
           abstract?: string | null
+          authors?: string | null
           conference?: string | null
           created_at?: string
           doi?: string | null
           faculty_id?: string | null
           id?: string
+          indexing?: string[] | null
           journal?: string | null
           keywords?: string[] | null
+          pages?: string | null
           pdf_url?: string | null
+          pub_type?: string | null
+          publication_date?: string | null
+          publisher?: string | null
           scholar_url?: string | null
           status?: string
           submitted_by?: string | null
           title?: string
           updated_at?: string
+          volume_issue?: string | null
           year?: number
         }
         Relationships: [
