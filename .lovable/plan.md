@@ -1,99 +1,106 @@
 
 
-# AcademicArchives – Implementation Plan
+# Plan: Publications Redesign, Favicon, and Branding Cleanup
 
-## Overview
-A centralized academic research platform for storing, managing, and showcasing institutional projects, publications, and faculty profiles. Clean academic theme with white + blue primary colors, sidebar navigation, and card-based layouts matching your wireframe design.
+## 1. Branding Changes
 
-## Backend (Lovable Cloud / Supabase)
-- **Authentication** with role-based access (Admin, Faculty, Student, Viewer)
-- **Database** for projects, publications, faculty, departments, and users
-- **File Storage** for PDF uploads (project reports, publication documents)
-- **Row-Level Security** so users only edit their own submissions; admins manage everything
+### Favicon
+- Copy the uploaded graduation cap image (`user-uploads://image-7.png`) to `public/favicon.png`
+- Update `index.html` to reference the new favicon
 
----
+### Title and Meta Tags
+- Change document title from "Lovable App" to "Academic Archives"
+- Remove all Lovable references from `og:title`, `og:description`, `og:image`, `twitter:site`, `twitter:image`
+- Update meta description to "Institutional Research & Academic Knowledge Platform"
 
-## Pages & Features
+## 2. Database Migration
 
-### 🏠 Public Pages (No Login Required)
+The current `publications` table is missing several fields shown in the reference images. A migration will add:
 
-**1. Home / Dashboard (`/`)**
-- Global search bar across projects, publications, and faculty
-- Quick access cards (Projects, Publications, Faculty)
-- Stats overview (total projects, publications, departments)
-- Recent additions section
+- `authors` (text) -- comma-separated author names (e.g., "Dr. XYZ, Dr. ABC")
+- `publisher` (text) -- e.g., "IEEE", "Elsevier"
+- `indexing` (text array) -- e.g., ["Scopus", "SCI", "UGC"]
+- `volume_issue` (text) -- e.g., "Vol. 12, Issue 4"
+- `pages` (text) -- e.g., "233-245"
+- `publication_date` (date) -- exact publication date
+- `pub_type` (text) -- "national" or "international"
 
-**2. Projects List (`/projects`)**
-- Filterable table: Department, Year, Guide, Domain
-- Search within projects
-- Click any row to view details
+## 3. Publications Page Redesign
 
-**3. Project Detail (`/projects/:id`)**
-- Title, abstract, department, year, guide, team members
-- Download PDF report, GitHub link, demo link
+Completely rewrite `src/pages/Publications.tsx` to match the reference images:
 
-**4. Publications List (`/publications`)**
-- Filterable table: Faculty, Year, Journal/Conference, Keywords
-- Search within publications
+### Header
+- Blue banner: "PUBLICATIONS" title with underline accent
+- Subtitle: "Research Output of the Institution"
 
-**5. Publication Detail (`/publications/:id`)**
-- Title, faculty, journal, year, DOI, abstract
-- Download PDF, Google Scholar link
+### Search and Controls
+- Full-width search bar ("Search by Title / Faculty / Journal")
+- Filter dropdown button and Sort By Year dropdown
 
-**6. Faculty Directory (`/faculty`)**
-- Searchable list with department and expertise filters
-- Card-based layout with photo, name, department
+### Stats/Info Bar (horizontal tabs)
+- Tabs: All (dot indicator), Journals
+- Inline stats: year range, indexed count, international count, national count
 
-**7. Faculty Profile (`/faculty/:id`)**
-- Profile details: photo, name, department, expertise, research interests
-- List of publications and supervised projects (auto-populated from data)
+### Two View Modes
 
-### 🔐 Authentication Pages
+**"All" tab -- Card-based layout** (matching image-8.png):
+Each publication as a bordered card showing:
+- Numbered title with "View Details" button
+- Grid of details: Faculty, Authors, Journal, Publisher, Type, Date
+- Indexing badges (Scopus, SCI styled tags)
+- DOI with "Open DOI" button and profile/detail icon button
 
-**8. Login (`/login`)** – Email/password login with role-based redirect
-**9. Register (`/register`)** – Optional self-registration
+**"Journals" tab -- Table layout** (matching image-9.png):
+- Section header: "JOURNAL PUBLICATIONS"
+- Table columns: S.No, Faculty Name (with dept tag), Name of Author/s, Title of the Paper + Journal Name, Year, Indexing
+- "View Details" button per row
+- Previous/1/2/3.../Next pagination
 
-### 🎓 Student Dashboard (Protected)
+### Side Filter Panel (right side)
+Collapsible panel with checkbox filters:
+- Publication Type: Journal / Conference
+- Year: checkbox list (2025, 2024, 2023...)
+- Department: checkbox list (CSE, ECE, MECH...)
+- National / International: checkbox pair
+- Indexing: text input or dropdown
+- "Apply Filters" blue button at bottom
 
-**10. Student Dashboard (`/student-dashboard`)**
-- View own submissions and their approval status
-- Submit new project form (title, abstract, year, department, PDF, GitHub link, guide)
+## 4. Files to Change
 
-### 👩‍🏫 Faculty Dashboard (Protected)
+| File | Action |
+|------|--------|
+| `public/favicon.png` | Create (copy from upload) |
+| `index.html` | Edit title, meta tags, favicon link |
+| `src/pages/Publications.tsx` | Full rewrite with new card+table layout |
+| Database migration | Add columns to publications table |
 
-**11. Faculty Dashboard (`/faculty-dashboard`)**
-- View own submissions (projects + publications)
-- Submit new project or publication
-- Edit submissions before approval
+## 5. What Stays the Same
+- Projects page UI -- no changes
+- All other pages (Faculty, Patents, IP Assets, etc.) -- unchanged
+- Sidebar navigation -- unchanged
+- Login/Register pages -- already cleaned of branding
 
-### 🛡️ Admin Pages (Protected – Admin Only)
+## Technical Details
 
-**12. Admin Dashboard (`/admin`)**
-- Pending approvals count, upload stats, department contributions
-- Quick action buttons
+### Publications Page Component Structure
+```text
+Publications
+  +-- Blue Header Banner
+  +-- Search Bar + Filter Button + Sort Dropdown
+  +-- Stats/Tab Bar (All | Journals | year range | indexed | intl | natl)
+  +-- Main Content Area
+  |     +-- "All" mode: Stacked publication cards
+  |     +-- "Journals" mode: Table with columns
+  |     +-- Pagination (Previous 1 2 3 ... Next)
+  +-- Side Filter Panel (conditionally shown)
+        +-- Publication Type checkboxes
+        +-- Year checkboxes
+        +-- Department checkboxes
+        +-- National/International checkboxes
+        +-- Indexing filter
+        +-- Apply Filters button
+```
 
-**13. Manage Projects (`/admin/projects`)**
-- Tabs: Pending / Approved / Rejected
-- Approve, reject, edit metadata, delete
-
-**14. Manage Publications (`/admin/publications`)**
-- Same tab structure as projects management
-
-**15. Manage Faculty (`/admin/faculty`)**
-- Add, edit, delete faculty profiles
-
-**16. Manage Users (`/admin/users`)**
-- Manage roles, activate/deactivate accounts
-
-**17. Bulk Upload (`/admin/bulk-upload`)**
-- CSV/Excel upload with format validation, preview, and confirm import
-
----
-
-## Design & Layout
-- **Sidebar navigation**: Dashboard, Projects, Publications, Faculty, Admin (conditional)
-- **Top bar**: Global search + profile dropdown
-- **Theme**: White background, blue (#1565C0) primary, clean professional academic look
-- **Responsive**: Mobile-friendly with collapsible sidebar
-- **Components**: Data tables with sorting/pagination, card-based stats, form dialogs
+### Database Migration SQL
+The migration adds nullable columns to `publications` so existing data is unaffected. All new fields are optional and will be populated via admin/SQL inserts.
 
