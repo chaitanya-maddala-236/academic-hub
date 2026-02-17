@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { validationResult } = require('express-validator');
 
 // Get all student projects
 const getAllStudentProjects = async (req, res) => {
@@ -108,6 +109,15 @@ const getStudentProjectById = async (req, res) => {
 // Create student project
 const createStudentProject = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const {
       title,
       faculty_id,

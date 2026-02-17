@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { validationResult } = require('express-validator');
 
 // Get all awards
 const getAllAwards = async (req, res) => {
@@ -102,6 +103,15 @@ const getAwardById = async (req, res) => {
 // Create award
 const createAward = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const {
       title,
       faculty_id,

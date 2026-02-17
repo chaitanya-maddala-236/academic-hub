@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { validationResult } = require('express-validator');
 
 // Get all consultancy records
 const getAllConsultancy = async (req, res) => {
@@ -108,6 +109,15 @@ const getConsultancyById = async (req, res) => {
 // Create consultancy record
 const createConsultancy = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const {
       title,
       faculty_id,

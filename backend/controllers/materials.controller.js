@@ -2,6 +2,7 @@ const pool = require('../config/db');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { validationResult } = require('express-validator');
 
 // Ensure upload directory exists
 const uploadDir = path.join(__dirname, '..', 'uploads', 'materials');
@@ -25,8 +26,17 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /pdf|ppt|pptx|doc|docx|xls|xlsx/;
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const mimetype = allowedMimeTypes.includes(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
@@ -144,6 +154,15 @@ const getMaterialById = async (req, res) => {
 // Create teaching material
 const createMaterial = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
     const {
       title,
       faculty_id,
