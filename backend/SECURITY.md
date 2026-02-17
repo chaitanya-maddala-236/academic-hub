@@ -8,6 +8,23 @@
 
 All alerts are of type `js/missing-rate-limiting` which indicates that route handlers perform database operations or authorization but do not have rate limiting configured.
 
+### Dependency Security
+
+**✅ All Critical Vulnerabilities Resolved**
+
+**Previous Issues (FIXED):**
+- ~~Multer 1.4.5-lts.2 vulnerabilities~~ → **Updated to 2.0.2**
+  - ✅ Fixed: DoS via unhandled exception from malformed request
+  - ✅ Fixed: DoS via unhandled exception
+  - ✅ Fixed: DoS from maliciously crafted requests
+  - ✅ Fixed: DoS via memory leaks from unclosed streams
+
+**Remaining Issues (Non-Critical):**
+- `tar` package vulnerabilities (transitive dependency of bcrypt)
+  - Status: Low risk - only used during bcrypt installation
+  - Impact: No runtime security impact
+  - Mitigation: Not a production runtime dependency
+
 ### Assessment
 
 **Status**: Known limitation - Not a critical security vulnerability
