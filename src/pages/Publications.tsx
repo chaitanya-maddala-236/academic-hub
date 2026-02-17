@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,21 +59,47 @@ export default function Publications() {
   const { data: publications, isLoading } = useQuery({
     queryKey: ["publications"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("publications")
-        .select("*, faculty(name, department_id, departments:department_id(name))")
-        .eq("status", "approved");
-      return data ?? [];
+      const response = await api.get<any>("/publications?page=1&limit=1000", false);
+      // Transform backend data to match expected format
+      const pubs = response.data ?? [];
+      return pubs.map((pub: any) => ({
+        ...pub,
+        // Map backend fields to expected frontend fields
+        authors: pub.authors || "—",
+        journal: pub.journal_name || null,
+        conference: pub.publication_type === 'conference' ? pub.journal_name : null,
+        publisher: pub.publisher || "—",
+        doi: pub.doi || null,
+        indexing: pub.indexing ? [pub.indexing] : [],
+        pub_type: pub.national_international || "national",
+        faculty: {
+          name: pub.faculty_name || "—",
+          department_id: pub.department,
+          departments: {
+            name: pub.department || "—"
+          }
+        }
+      }));
     },
   });
 
-  const { data: departments } = useQuery({
-    queryKey: ["departments"],
+  const { data: departmentsData } = useQuery({
+    queryKey: ["faculty-for-departments"],
     queryFn: async () => {
-      const { data } = await supabase.from("departments").select("*");
-      return data ?? [];
+      const response = await api.get<any>("/faculty?page=1&limit=1000", false);
+      return response.data ?? [];
     },
   });
+
+  // Extract unique departments from faculty
+  const departments = useMemo(() => {
+    if (!departmentsData) return [];
+    const deptSet = new Set<string>();
+    departmentsData.forEach((f: any) => {
+      if (f.department) deptSet.add(f.department);
+    });
+    return Array.from(deptSet).sort().map(name => ({ id: name, name, code: name }));
+  }, [departmentsData]);
 
   const stats = useMemo(() => {
     if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0, indexed: 0, yearRange: "" };

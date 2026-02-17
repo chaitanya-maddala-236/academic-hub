@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,24 +13,44 @@ export default function Faculty() {
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState("all");
 
-  const { data: departments } = useQuery({
-    queryKey: ["departments"],
+  const { data: facultyData, isLoading } = useQuery({
+    queryKey: ["faculty-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("departments").select("*").order("name");
-      return data ?? [];
+      const response = await api.get<any>("/faculty?page=1&limit=1000", false);
+      return response.data ?? [];
     },
   });
 
-  const { data: facultyList, isLoading } = useQuery({
-    queryKey: ["faculty-list", search, department],
-    queryFn: async () => {
-      let query = supabase.from("faculty").select("*, departments(name)").order("name");
-      if (search) query = query.or(`name.ilike.%${search}%,designation.ilike.%${search}%`);
-      if (department !== "all") query = query.eq("department_id", department);
-      const { data } = await query;
-      return data ?? [];
-    },
-  });
+  // Extract unique departments from faculty
+  const departments = useMemo(() => {
+    if (!facultyData) return [];
+    const deptSet = new Set<string>();
+    facultyData.forEach((f: any) => {
+      if (f.department) deptSet.add(f.department);
+    });
+    return Array.from(deptSet).sort();
+  }, [facultyData]);
+
+  // Filter faculty on client side
+  const facultyList = useMemo(() => {
+    if (!facultyData) return [];
+    let result = [...facultyData];
+
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter((f: any) =>
+        f.name?.toLowerCase().includes(s) ||
+        f.designation?.toLowerCase().includes(s) ||
+        f.specialization?.toLowerCase().includes(s)
+      );
+    }
+
+    if (department !== "all") {
+      result = result.filter((f: any) => f.department === department);
+    }
+
+    return result;
+  }, [facultyData, search, department]);
 
   return (
     <div className="space-y-6">
@@ -50,8 +70,8 @@ export default function Faculty() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
-            {departments?.map((d) => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            {departments.map((d) => (
+              <SelectItem key={d} value={d}>{d}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -59,17 +79,17 @@ export default function Faculty() {
 
       {isLoading && <p className="text-muted-foreground">Loading...</p>}
 
-      {!isLoading && facultyList?.length === 0 && (
+      {!isLoading && facultyList.length === 0 && (
         <p className="text-muted-foreground py-8 text-center">No faculty found</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {facultyList?.map((f: any) => (
+        {facultyList.map((f: any) => (
           <Link key={f.id} to={`/faculty/${f.id}`}>
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-5 flex items-start gap-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={f.photo_url ?? undefined} />
+                  <AvatarImage src={f.profile_image ?? undefined} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {f.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                   </AvatarFallback>
@@ -77,12 +97,10 @@ export default function Faculty() {
                 <div className="min-w-0">
                   <p className="font-semibold truncate">{f.name}</p>
                   <p className="text-sm text-muted-foreground">{f.designation ?? "Faculty"}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{f.departments?.name}</p>
-                  {f.expertise && f.expertise.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">{f.department}</p>
+                  {f.specialization && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {f.expertise.slice(0, 3).map((e: string) => (
-                        <Badge key={e} variant="outline" className="text-xs">{e}</Badge>
-                      ))}
+                      <Badge variant="outline" className="text-xs">{f.specialization}</Badge>
                     </div>
                   )}
                 </div>
