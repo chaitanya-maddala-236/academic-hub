@@ -105,6 +105,10 @@ const getPublicationsPerYear = async (req, res, next) => {
 const getPatentGrowth = async (req, res, next) => {
   try {
     const { years = 5 } = req.query;
+    
+    // Calculate the date threshold in JavaScript to avoid SQL injection
+    const dateThreshold = new Date();
+    dateThreshold.setFullYear(dateThreshold.getFullYear() - parseInt(years));
 
     const result = await pool.query(`
       SELECT 
@@ -112,11 +116,11 @@ const getPatentGrowth = async (req, res, next) => {
         COUNT(*) as count,
         SUM(CASE WHEN status = 'granted' THEN 1 ELSE 0 END) as granted
       FROM ipr
-      WHERE filing_date >= CURRENT_DATE - INTERVAL '$1 years'
+      WHERE filing_date >= $1
       AND ipr_type = 'patent'
       GROUP BY year
       ORDER BY year ASC
-    `, [years]);
+    `, [dateThreshold]);
 
     res.json({
       success: true,
@@ -131,6 +135,10 @@ const getPatentGrowth = async (req, res, next) => {
 const getConsultancyRevenue = async (req, res, next) => {
   try {
     const { years = 5 } = req.query;
+    
+    // Calculate the date threshold in JavaScript to avoid SQL injection
+    const dateThreshold = new Date();
+    dateThreshold.setFullYear(dateThreshold.getFullYear() - parseInt(years));
 
     const result = await pool.query(`
       SELECT 
@@ -138,10 +146,10 @@ const getConsultancyRevenue = async (req, res, next) => {
         COALESCE(SUM(amount_earned), 0) as revenue,
         COUNT(*) as count
       FROM consultancy
-      WHERE start_date >= CURRENT_DATE - INTERVAL '$1 years'
+      WHERE start_date >= $1
       GROUP BY year
       ORDER BY year ASC
-    `, [years]);
+    `, [dateThreshold]);
 
     res.json({
       success: true,
