@@ -1,19 +1,26 @@
 # University Research Management System - Backend API
 
-A production-ready REST API backend for managing university research data including publications, patents, IP assets, funded projects, research labs, and faculty information.
+A production-ready REST API backend for managing university research data including publications, patents, IP assets, funded projects, research labs, research centers, consultancy, student projects, teaching materials, awards, and faculty information.
 
 ## 🚀 Features
 
-- **Authentication & Authorization**: JWT-based authentication with role-based access control (Admin, Faculty, Public)
-- **Faculty Management**: CRUD operations with profile image upload
+- **Authentication & Authorization**: JWT-based authentication with role-based access control (Admin, Faculty, Student, Public)
+- **Research Centers**: Management of research centers with detailed information
+- **Funded Projects**: Comprehensive project tracking with agency details, PI/CoPI, objectives, deliverables, and outcomes
+- **IPR Management**: Patents, Trademarks, and Copyrights tracking with status monitoring
+- **Consultancy**: Track consultancy projects and revenue
 - **Publications**: Complete publication management with filtering and pagination
+- **Student Projects**: UG/PG project management with guide assignment
+- **Teaching Materials**: Secure repository for course materials (PPT, PDF, Video links)
+- **Awards & Recognition**: Track faculty and student achievements
+- **Dashboard Analytics**: Comprehensive analytics for admin with statistics, charts, and department comparisons
+- **Faculty Management**: CRUD operations with profile image upload
 - **Patents**: Patent tracking and management
 - **IP Assets**: Intellectual property asset management
-- **Funded Projects**: Project management with auto-calculated status (ongoing/completed/upcoming)
 - **Research Labs**: Research laboratory information with image upload
-- **File Upload**: Support for profile images and lab images
+- **File Upload**: Support for profile images, documents, and materials
 - **Filtering & Pagination**: Server-side filtering and pagination on all list endpoints
-- **Relationships**: Faculty can be linked to publications, patents, and projects
+- **Relationships**: Faculty linked to publications, patents, projects, and more
 
 ## 📋 Prerequisites
 
@@ -68,6 +75,11 @@ A production-ready REST API backend for managing university research data includ
    psql -U postgres -d research_portal_db -f database/schema.sql
    ```
 
+   (Optional) Seed the database with sample data:
+   ```bash
+   npm run seed
+   ```
+
 5. **Start the server**
 
    Development mode with auto-reload:
@@ -97,7 +109,7 @@ Content-Type: application/json
 {
   "email": "user@university.edu",
   "password": "password123",
-  "role": "public"  // admin | faculty | public
+  "role": "public"  // admin | faculty | student | public
 }
 ```
 
@@ -124,6 +136,18 @@ Response:
     }
   }
 }
+```
+
+#### Get Current User
+```http
+GET /api/auth/me
+Authorization: Bearer <token>
+```
+
+#### Logout
+```http
+POST /api/auth/logout
+Authorization: Bearer <token>
 ```
 
 ### Faculty Endpoints
@@ -160,13 +184,80 @@ Response:
 
 ### Funded Projects Endpoints
 
-- `GET /api/projects` - Get all projects (supports filters: status, department, funding_agency, year, page, limit)
+- `GET /api/projects` - Get all projects (supports filters: status, department, agency, year, page, limit)
 - `GET /api/projects/:id` - Get single project
 - `POST /api/projects` - Create project (Admin only)
 - `PUT /api/projects/:id` - Update project (Admin only)
 - `DELETE /api/projects/:id` - Delete project (Admin only)
 
+**Enhanced Fields:** Now includes agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, pi, copi, objectives, deliverables, outcomes, team, and more.
+
 **Note**: Project status (ongoing/completed/upcoming) is automatically calculated based on start_date and end_date.
+
+### Research Centers Endpoints
+
+- `GET /api/research-centers` - Get all research centers (supports filters: department, research_area, page, limit)
+- `GET /api/research-centers/:id` - Get single research center
+- `POST /api/research-centers` - Create research center (Admin only)
+- `PUT /api/research-centers/:id` - Update research center (Admin only)
+- `DELETE /api/research-centers/:id` - Delete research center (Admin only)
+
+### IPR Endpoints
+
+- `GET /api/ipr` - Get all IPR (supports filters: type, status, department, year, page, limit)
+- `GET /api/ipr/:id` - Get single IPR
+- `POST /api/ipr` - Create IPR (Admin only)
+- `PUT /api/ipr/:id` - Update IPR (Admin only)
+- `DELETE /api/ipr/:id` - Delete IPR (Admin only)
+
+**Types:** Patent, Trademark, Copyright  
+**Status:** Filed, Published, Granted, Rejected
+
+### Consultancy Endpoints
+
+- `GET /api/consultancy` - Get all consultancy (supports filters: department, faculty_id, status, year, page, limit)
+- `GET /api/consultancy/:id` - Get single consultancy
+- `POST /api/consultancy` - Create consultancy (Admin only)
+- `PUT /api/consultancy/:id` - Update consultancy (Admin only)
+- `DELETE /api/consultancy/:id` - Delete consultancy (Admin only)
+
+### Student Projects Endpoints
+
+- `GET /api/student-projects` - Get all student projects (supports filters: project_type, department, guide_id, year, page, limit)
+- `GET /api/student-projects/:id` - Get single student project
+- `POST /api/student-projects` - Create student project (Admin/Faculty)
+- `PUT /api/student-projects/:id` - Update student project (Admin/Faculty)
+- `DELETE /api/student-projects/:id` - Delete student project (Admin only)
+
+**Project Types:** UG, PG
+
+### Teaching Materials Endpoints
+
+- `GET /api/materials` - Get all teaching materials (Authenticated users only)
+- `GET /api/materials/:id` - Get single teaching material (Authenticated users only)
+- `POST /api/materials` - Create teaching material (Admin/Faculty)
+- `PUT /api/materials/:id` - Update teaching material (Admin/Faculty)
+- `DELETE /api/materials/:id` - Delete teaching material (Admin/Faculty)
+
+**Material Types:** PPT, PDF, Video
+
+### Awards Endpoints
+
+- `GET /api/awards` - Get all awards (supports filters: recipient_type, faculty_id, year, page, limit)
+- `GET /api/awards/:id` - Get single award
+- `POST /api/awards` - Create award (Admin only)
+- `PUT /api/awards/:id` - Update award (Admin only)
+- `DELETE /api/awards/:id` - Delete award (Admin only)
+
+**Recipient Types:** Faculty, Student, Department
+
+### Dashboard Analytics Endpoints (Admin Only)
+
+- `GET /api/dashboard/stats` - Get comprehensive dashboard statistics
+- `GET /api/dashboard/publications-per-year` - Get publications trend
+- `GET /api/dashboard/patent-growth` - Get IPR/patent growth data
+- `GET /api/dashboard/consultancy-revenue` - Get consultancy revenue by year
+- `GET /api/dashboard/department-comparison` - Get department-wise comparison
 
 ### Research Labs Endpoints
 
@@ -216,12 +307,18 @@ All API responses follow this format:
 ## 🗄️ Database Schema
 
 The database includes the following tables:
-- `users` - User authentication
+- `users` - User authentication (supports admin, faculty, student, public roles)
 - `faculty` - Faculty information
+- `research_centers` - Research centers and their details
+- `funded_projects` - Funded research projects with comprehensive fields
+- `ipr` - Intellectual Property Rights (Patents, Trademarks, Copyrights)
+- `consultancy` - Consultancy projects and revenue
 - `publications` - Research publications
-- `patents` - Patent records
-- `ip_assets` - Intellectual property assets
-- `funded_projects` - Funded research projects
+- `student_projects` - UG/PG student projects
+- `teaching_materials` - Course materials (PPT, PDF, Videos)
+- `awards` - Awards and recognitions
+- `patents` - Patent records (legacy table, use `ipr` for new records)
+- `ip_assets` - Intellectual property assets (legacy table)
 - `research_labs` - Research laboratory information
 
 See `database/schema.sql` for complete schema definition.
@@ -297,11 +394,23 @@ curl http://localhost:5000/health
 
 ## 📝 Default Admin Account
 
-After running the schema, a default admin account is created:
-- Email: `admin@university.edu`
-- Password: `admin123`
+After running the schema, default accounts are created with these credentials:
 
-**Important**: Change this password immediately after first login in production!
+### Admin Account
+- Email: `admin@vnrvjiet.ac.in`
+- Password: `Admin@123`
+
+### Faculty Account  
+- Email: `faculty@vnrvjiet.ac.in`
+- Password: `Faculty@123`
+
+### Student Account
+- Email: `student@vnrvjiet.ac.in`
+- Password: `Student@123`
+
+**Important**: Change these passwords immediately after first login in production!
+
+For complete API documentation with all endpoints and examples, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md).
 
 ## 🤝 Support
 
