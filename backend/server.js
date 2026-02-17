@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const pool = require('./config/db');
 const errorHandler = require('./middleware/error.middleware');
+const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
 // Import routes
 const authRoutes = require('./routes/auth.routes');
@@ -29,6 +30,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
