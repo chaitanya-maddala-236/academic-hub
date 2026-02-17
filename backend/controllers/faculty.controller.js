@@ -130,9 +130,9 @@ const createFaculty = async (req, res, next) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO faculty (name, designation, department, specialization, bio, email, profile_image)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [name, designation, department, specialization, bio, email, profileImagePath]
+      `INSERT INTO faculty (name, designation, department, specialization, bio, email, profile_image, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [name, designation, department, specialization, bio, email, profileImagePath, req.user?.id || null]
     );
 
     res.status(201).json({
@@ -165,7 +165,8 @@ const updateFaculty = async (req, res, next) => {
            specialization = COALESCE($4, specialization),
            bio = COALESCE($5, bio),
            email = COALESCE($6, email),
-           profile_image = COALESCE($7, profile_image)
+           profile_image = COALESCE($7, profile_image),
+           updated_at = CURRENT_TIMESTAMP
        WHERE id = $8
        RETURNING *`,
       [name, designation, department, specialization, bio, email, profileImagePath, id]
