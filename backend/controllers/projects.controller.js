@@ -18,7 +18,7 @@ const calculateProjectStatus = (startDate, endDate) => {
 // Get all projects with filters and pagination
 const getAllProjects = async (req, res, next) => {
   try {
-    const { status, department, funding_agency, year, page = 1, limit = 10 } = req.query;
+    const { status, department, agency, year, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = 'SELECT * FROM funded_projects WHERE 1=1';
@@ -32,9 +32,9 @@ const getAllProjects = async (req, res, next) => {
       paramIndex++;
     }
 
-    if (funding_agency) {
-      query += ` AND funding_agency = $${paramIndex}`;
-      params.push(funding_agency);
+    if (agency) {
+      query += ` AND agency = $${paramIndex}`;
+      params.push(agency);
       paramIndex++;
     }
 
@@ -144,12 +144,21 @@ const createProject = async (req, res, next) => {
   try {
     const {
       title,
-      principal_investigator,
-      department,
-      funding_agency,
-      sanctioned_amount,
+      agency,
+      agency_scientist,
+      file_number,
+      amount_sanctioned,
+      funds_per_year,
       start_date,
-      end_date
+      end_date,
+      pi,
+      copi,
+      objectives,
+      deliverables,
+      outcomes,
+      team,
+      department,
+      pdf_url
     } = req.body;
 
     // Calculate initial status
@@ -157,9 +166,9 @@ const createProject = async (req, res, next) => {
 
     const result = await pool.query(
       `INSERT INTO funded_projects 
-       (title, principal_investigator, department, funding_agency, sanctioned_amount, start_date, end_date, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [title, principal_investigator, department, funding_agency, sanctioned_amount, start_date, end_date, status]
+       (title, agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, start_date, end_date, pi, copi, objectives, deliverables, outcomes, team, department, status, pdf_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+      [title, agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, start_date, end_date, pi, copi, objectives, deliverables, outcomes, team, department, status, pdf_url, req.user?.id]
     );
 
     const project = result.rows[0];
@@ -181,12 +190,21 @@ const updateProject = async (req, res, next) => {
     const { id } = req.params;
     const {
       title,
-      principal_investigator,
-      department,
-      funding_agency,
-      sanctioned_amount,
+      agency,
+      agency_scientist,
+      file_number,
+      amount_sanctioned,
+      funds_per_year,
       start_date,
-      end_date
+      end_date,
+      pi,
+      copi,
+      objectives,
+      deliverables,
+      outcomes,
+      team,
+      department,
+      pdf_url
     } = req.body;
 
     // Get current project data to determine new status
@@ -206,16 +224,26 @@ const updateProject = async (req, res, next) => {
     const result = await pool.query(
       `UPDATE funded_projects
        SET title = COALESCE($1, title),
-           principal_investigator = COALESCE($2, principal_investigator),
-           department = COALESCE($3, department),
-           funding_agency = COALESCE($4, funding_agency),
-           sanctioned_amount = COALESCE($5, sanctioned_amount),
-           start_date = COALESCE($6, start_date),
-           end_date = COALESCE($7, end_date),
-           status = $8
-       WHERE id = $9
+           agency = COALESCE($2, agency),
+           agency_scientist = COALESCE($3, agency_scientist),
+           file_number = COALESCE($4, file_number),
+           amount_sanctioned = COALESCE($5, amount_sanctioned),
+           funds_per_year = COALESCE($6, funds_per_year),
+           start_date = COALESCE($7, start_date),
+           end_date = COALESCE($8, end_date),
+           pi = COALESCE($9, pi),
+           copi = COALESCE($10, copi),
+           objectives = COALESCE($11, objectives),
+           deliverables = COALESCE($12, deliverables),
+           outcomes = COALESCE($13, outcomes),
+           team = COALESCE($14, team),
+           department = COALESCE($15, department),
+           status = $16,
+           pdf_url = COALESCE($17, pdf_url),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $18
        RETURNING *`,
-      [title, principal_investigator, department, funding_agency, sanctioned_amount, start_date, end_date, status, id]
+      [title, agency, agency_scientist, file_number, amount_sanctioned, funds_per_year, start_date, end_date, pi, copi, objectives, deliverables, outcomes, team, department, status, pdf_url, id]
     );
 
     const project = result.rows[0];

@@ -113,7 +113,49 @@ const login = async (req, res, next) => {
   }
 };
 
+// Get current user
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      'SELECT id, email, role, created_at FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0]
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Logout user (client-side should remove token)
+const logout = async (req, res, next) => {
+  try {
+    // In JWT authentication, logout is handled client-side by removing the token
+    // This endpoint is provided for consistency and future extensions
+    res.json({
+      success: true,
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
-  login
+  login,
+  getCurrentUser,
+  logout
 };
