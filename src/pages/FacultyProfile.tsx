@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,40 +12,26 @@ export default function FacultyProfile() {
   const { data: faculty, isLoading } = useQuery({
     queryKey: ["faculty", id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("faculty")
-        .select("*, departments(name)")
-        .eq("id", id!)
-        .single();
-      return data;
+      const response = await api.get<any>(`/faculty/${id}`, false);
+      return response.data;
     },
     enabled: !!id,
   });
 
-  const { data: publications } = useQuery({
+  const { data: publicationsData } = useQuery({
     queryKey: ["faculty-publications", id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("publications")
-        .select("id, title, year, journal")
-        .eq("faculty_id", id!)
-        .eq("status", "approved")
-        .order("year", { ascending: false });
-      return data ?? [];
+      const response = await api.get<any>(`/publications?faculty_id=${id}`, false);
+      return response.data || [];
     },
     enabled: !!id,
   });
 
-  const { data: projects } = useQuery({
+  const { data: projectsData } = useQuery({
     queryKey: ["faculty-projects", id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("projects")
-        .select("id, title, year, departments(name)")
-        .eq("guide_id", id!)
-        .eq("status", "approved")
-        .order("year", { ascending: false });
-      return data ?? [];
+      const response = await api.get<any>(`/projects?pi_id=${id}`, false);
+      return response.data || [];
     },
     enabled: !!id,
   });
@@ -63,13 +49,13 @@ export default function FacultyProfile() {
 
       <div className="flex items-start gap-5">
         <Avatar className="h-20 w-20">
-          <AvatarImage src={faculty.photo_url ?? undefined} />
+          <AvatarImage src={faculty.profile_image ?? undefined} />
           <AvatarFallback className="bg-primary text-primary-foreground text-xl">{initials}</AvatarFallback>
         </Avatar>
         <div>
           <h1 className="text-3xl font-bold">{faculty.name}</h1>
           <p className="text-muted-foreground">{faculty.designation ?? "Faculty"}</p>
-          <p className="text-sm text-muted-foreground">{(faculty as any).departments?.name}</p>
+          <p className="text-sm text-muted-foreground">{faculty.department}</p>
           {faculty.email && <p className="text-sm text-primary mt-1">{faculty.email}</p>}
         </div>
       </div>
@@ -81,33 +67,29 @@ export default function FacultyProfile() {
         </Card>
       )}
 
-      {faculty.expertise && faculty.expertise.length > 0 && (
+      {faculty.specialization && (
         <div>
-          <h3 className="font-semibold mb-2">Expertise</h3>
-          <div className="flex flex-wrap gap-2">
-            {faculty.expertise.map((e: string) => <Badge key={e}>{e}</Badge>)}
-          </div>
+          <h3 className="font-semibold mb-2">Specialization</h3>
+          <Badge>{faculty.specialization}</Badge>
         </div>
       )}
 
-      {faculty.research_interests && faculty.research_interests.length > 0 && (
+      {faculty.qualifications && (
         <div>
-          <h3 className="font-semibold mb-2">Research Interests</h3>
-          <div className="flex flex-wrap gap-2">
-            {faculty.research_interests.map((r: string) => <Badge key={r} variant="outline">{r}</Badge>)}
-          </div>
+          <h3 className="font-semibold mb-2">Qualifications</h3>
+          <p className="text-muted-foreground">{faculty.qualifications}</p>
         </div>
       )}
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">Publications ({publications?.length ?? 0})</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Publications ({publicationsData?.length ?? 0})</CardTitle></CardHeader>
         <CardContent>
-          {publications?.length === 0 && <p className="text-sm text-muted-foreground">No publications yet</p>}
+          {publicationsData?.length === 0 && <p className="text-sm text-muted-foreground">No publications yet</p>}
           <div className="space-y-2">
-            {publications?.map((p: any) => (
+            {publicationsData?.map((p: any) => (
               <Link key={p.id} to={`/publications/${p.id}`} className="block p-2 rounded hover:bg-muted/50">
                 <p className="text-sm font-medium">{p.title}</p>
-                <p className="text-xs text-muted-foreground">{p.year} {p.journal && `• ${p.journal}`}</p>
+                <p className="text-xs text-muted-foreground">{p.year} {p.journal_name && `• ${p.journal_name}`}</p>
               </Link>
             ))}
           </div>
@@ -115,14 +97,16 @@ export default function FacultyProfile() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-lg">Supervised Projects ({projects?.length ?? 0})</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Supervised Projects ({projectsData?.length ?? 0})</CardTitle></CardHeader>
         <CardContent>
-          {projects?.length === 0 && <p className="text-sm text-muted-foreground">No projects yet</p>}
+          {projectsData?.length === 0 && <p className="text-sm text-muted-foreground">No projects yet</p>}
           <div className="space-y-2">
-            {projects?.map((p: any) => (
+            {projectsData?.map((p: any) => (
               <Link key={p.id} to={`/projects/${p.id}`} className="block p-2 rounded hover:bg-muted/50">
                 <p className="text-sm font-medium">{p.title}</p>
-                <p className="text-xs text-muted-foreground">{p.year} {p.departments?.name && `• ${p.departments.name}`}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.start_date && new Date(p.start_date).getFullYear()} {p.department && `• ${p.department}`}
+                </p>
               </Link>
             ))}
           </div>

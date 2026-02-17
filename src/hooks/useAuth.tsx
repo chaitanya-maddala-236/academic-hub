@@ -1,12 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
+import { getCurrentUser, logout as authLogout, isAuthenticated } from "@/services/auth.service";
 
-type AppRole = Database["public"]["Enums"]["app_role"];
+type AppRole = 'admin' | 'faculty' | 'student' | 'public';
+
+interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: AppRole;
+  department?: string;
+}
 
 interface AuthContextType {
-  session: Session | null;
+  session: { user: User } | null;
   user: User | null;
   roles: AppRole[];
   loading: boolean;
@@ -24,50 +30,38 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRoles = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    setRoles(data?.map((r) => r.role) ?? []);
-  };
-
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchRoles(session.user.id), 0);
-        } else {
-          setRoles([]);
+    // Check for existing authentication on mount
+    const initAuth = () => {
+      try {
+        if (isAuthenticated()) {
+          const currentUser = getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+          }
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
         setLoading(false);
       }
-    );
+    };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchRoles(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    initAuth();
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authLogout();
+    setUser(null);
   };
 
-  const hasRole = (role: AppRole) => roles.includes(role);
+  const hasRole = (role: AppRole) => user?.role === role;
+
+  const session = user ? { user } : null;
+  const roles = user ? [user.role] : [];
 
   return (
     <AuthContext.Provider value={{ session, user, roles, loading, signOut, hasRole }}>

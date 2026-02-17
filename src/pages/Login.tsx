@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { login } from "@/services/auth.service";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,39 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
-    } else {
-      navigate("/");
+    
+    try {
+      const response = await login({ email, password });
+      
+      if (response.success) {
+        toast({ 
+          title: "Login successful", 
+          description: `Welcome back, ${response.user.name}!` 
+        });
+        
+        // Navigate based on role
+        const role = response.user.role;
+        if (role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (role === 'faculty') {
+          navigate('/faculty/dashboard');
+        } else if (role === 'student') {
+          navigate('/student/dashboard');
+        } else {
+          navigate('/');
+        }
+        
+        // Reload to update auth context
+        window.location.reload();
+      }
+    } catch (error) {
+      toast({ 
+        title: "Login failed", 
+        description: error instanceof Error ? error.message : "Invalid credentials", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,7 +62,7 @@ export default function Login() {
             <GraduationCap className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl">Sign In</CardTitle>
-          <CardDescription>Access your AcademicArchives account</CardDescription>
+          <CardDescription>Access your AcademicHub account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -54,6 +81,11 @@ export default function Login() {
           <p className="text-center text-sm text-muted-foreground mt-4">
             Don't have an account? <Link to="/register" className="text-primary hover:underline">Register</Link>
           </p>
+          <div className="mt-4 p-3 bg-muted rounded-md text-xs">
+            <p className="font-semibold mb-1">Test Credentials:</p>
+            <p>Admin: admin@vnrvjiet.ac.in / Admin@123</p>
+            <p>Faculty: faculty@vnrvjiet.ac.in / Faculty@123</p>
+          </div>
         </CardContent>
       </Card>
     </div>
