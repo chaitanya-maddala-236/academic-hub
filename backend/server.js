@@ -14,6 +14,13 @@ const patentsRoutes = require('./routes/patents.routes');
 const ipAssetsRoutes = require('./routes/ipAssets.routes');
 const projectsRoutes = require('./routes/projects.routes');
 const labsRoutes = require('./routes/labs.routes');
+const researchCentersRoutes = require('./routes/researchCenters.routes');
+const iprRoutes = require('./routes/ipr.routes');
+const consultancyRoutes = require('./routes/consultancy.routes');
+const studentProjectsRoutes = require('./routes/studentProjects.routes');
+const teachingMaterialsRoutes = require('./routes/teachingMaterials.routes');
+const awardsRoutes = require('./routes/awards.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +53,13 @@ app.use('/api/patents', patentsRoutes);
 app.use('/api/ip-assets', ipAssetsRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/labs', labsRoutes);
+app.use('/api/research-centers', researchCentersRoutes);
+app.use('/api/ipr', iprRoutes);
+app.use('/api/consultancy', consultancyRoutes);
+app.use('/api/student-projects', studentProjectsRoutes);
+app.use('/api/materials', teachingMaterialsRoutes);
+app.use('/api/awards', awardsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // 404 handler
 app.use((req, res) => {
