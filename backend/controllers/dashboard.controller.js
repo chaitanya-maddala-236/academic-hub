@@ -44,7 +44,7 @@ const getDashboardStats = async (req, res, next) => {
     // Department-wise statistics
     const departmentStats = await pool.query(`
       SELECT 
-        department,
+        depts.department,
         COUNT(DISTINCT fp.id) as projects,
         COALESCE(SUM(fp.amount_sanctioned), 0) as funding,
         COUNT(DISTINCT p.id) as publications,

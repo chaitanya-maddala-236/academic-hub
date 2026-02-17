@@ -1,4 +1,7 @@
 const authorizeRole = (...roles) => {
+  // Flatten the roles array in case an array is passed
+  const flatRoles = roles.flat();
+  
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
@@ -7,7 +10,7 @@ const authorizeRole = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!flatRoles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Insufficient permissions.'
