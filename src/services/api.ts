@@ -15,7 +15,15 @@ const getAuthToken = (): string | null => {
 /**
  * Get current user from localStorage
  */
-export const getCurrentUser = (): any | null => {
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  department?: string;
+}
+
+export const getCurrentUser = (): User | null => {
   const userStr = localStorage.getItem('auth_user');
   return userStr ? JSON.parse(userStr) : null;
 };

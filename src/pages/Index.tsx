@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/services/api";
 import { cn } from "@/lib/utils";
 
 const dashboardTabs = [
@@ -27,52 +27,66 @@ type TabKey = (typeof dashboardTabs)[number]["key"];
 export default function Index() {
   const [activeTab, setActiveTab] = useState<TabKey>("projects");
 
-  const { data: stats } = useQuery({
-    queryKey: ["dashboard-stats"],
+  // Fetch stats from backend
+  const { data: projectsData } = useQuery({
+    queryKey: ["projects-count"],
     queryFn: async () => {
-      const [projects, publications, faculty] = await Promise.all([
-        supabase.from("projects").select("id", { count: "exact", head: true }).eq("status", "approved"),
-        supabase.from("publications").select("id", { count: "exact", head: true }).eq("status", "approved"),
-        supabase.from("faculty").select("id", { count: "exact", head: true }),
-      ]);
-      return {
-        projects: projects.count ?? 0,
-        publications: publications.count ?? 0,
-        faculty: faculty.count ?? 0,
-      };
+      const response = await api.get<any>("/projects?page=1&limit=1", false);
+      return response;
+    },
+  });
+
+  const { data: publicationsData } = useQuery({
+    queryKey: ["publications-count"],
+    queryFn: async () => {
+      const response = await api.get<any>("/publications?page=1&limit=1", false);
+      return response;
+    },
+  });
+
+  const { data: patentsData } = useQuery({
+    queryKey: ["patents-count"],
+    queryFn: async () => {
+      const response = await api.get<any>("/patents?page=1&limit=1", false);
+      return response;
+    },
+  });
+
+  const { data: facultyData } = useQuery({
+    queryKey: ["faculty-count"],
+    queryFn: async () => {
+      const response = await api.get<any>("/faculty?page=1&limit=1", false);
+      return response;
     },
   });
 
   const { data: recentProjects } = useQuery({
     queryKey: ["recent-projects"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("projects")
-        .select("id, title, year, domain, departments(name)")
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      return data ?? [];
+      const response = await api.get<any>("/projects?page=1&limit=5&sortBy=created_at&sortOrder=desc", false);
+      return response.data || [];
     },
   });
 
   const { data: recentPublications } = useQuery({
     queryKey: ["recent-publications"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("publications")
-        .select("id, title, year, journal, faculty(name)")
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      return data ?? [];
+      const response = await api.get<any>("/publications?page=1&limit=5&sortBy=created_at&sortOrder=desc", false);
+      return response.data || [];
     },
   });
 
+  const stats = {
+    projects: projectsData?.pagination?.total || 0,
+    publications: publicationsData?.pagination?.total || 0,
+    patents: patentsData?.pagination?.total || 0,
+    faculty: facultyData?.pagination?.total || 0,
+  };
+
   const quickAccessCards = [
-    { label: "Publications This Year", value: stats?.publications ?? 0, icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Projects Submitted", value: stats?.projects ?? 0, icon: FolderOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { label: "Patents Filed", value: 0, icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-100" },
+    { label: "Publications This Year", value: stats.publications, icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
+    { label: "Projects Submitted", value: stats.projects, icon: FolderOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
+    { label: "Patents Filed", value: stats.patents, icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-100" },
     { label: "IPs Registered", value: 0, icon: Lightbulb, color: "text-rose-600", bg: "bg-rose-100" },
   ];
 
@@ -103,10 +117,12 @@ export default function Index() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-foreground">Quick Access</h2>
-          <Button size="sm" className="gap-1">
-            <Plus className="h-4 w-4" />
-            Add New Project
-          </Button>
+          <Link to="/projects">
+            <Button size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
+              Add New Project
+            </Button>
+          </Link>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {quickAccessCards.map((card) => (
@@ -142,7 +158,7 @@ export default function Index() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm text-primary truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {p.departments?.name} • {p.year}
+                    {p.agency} • {p.start_date ? new Date(p.start_date).getFullYear() : 'N/A'}
                   </p>
                 </div>
               </Link>
@@ -159,7 +175,7 @@ export default function Index() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium text-sm text-primary truncate">{p.title}</p>
                   <p className="text-xs text-muted-foreground">
-                    {p.faculty?.name} • {p.year}
+                    {p.authors} • {p.year || 'N/A'}
                   </p>
                 </div>
               </Link>
