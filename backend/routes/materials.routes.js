@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
+const multer = require('multer');
 const materialsController = require('../controllers/materials.controller');
 const { verifyToken } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
@@ -12,12 +13,36 @@ const createMaterialValidation = [
   body('faculty_id').optional().isInt().withMessage('Faculty ID must be an integer')
 ];
 
+// Wrapper to handle Multer-specific errors and ensure consistent error responses
+const handleUpload = (req, res, next) => {
+  materialsController.upload(req, res, (err) => {
+    if (err) {
+      // Handle Multer errors explicitly to keep error responses consistent
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({
+          success: false,
+          message: 'Upload error',
+          error: err.message
+        });
+      }
+      // Handle custom errors (like file type validation)
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message
+        });
+      }
+    }
+    next();
+  });
+};
+
 // Public routes - students and public can view
 router.get('/', materialsController.getAllMaterials);
 router.get('/:id', materialsController.getMaterialById);
 
 // Protected routes - faculty and admin can create (with upload rate limiting)
-router.post('/', verifyToken, requireRole(['admin', 'faculty']), uploadLimiter, materialsController.upload, createMaterialValidation, materialsController.createMaterial);
+router.post('/', verifyToken, requireRole(['admin', 'faculty']), uploadLimiter, handleUpload, createMaterialValidation, materialsController.createMaterial);
 
 // Admin and faculty can delete (faculty can delete own materials)
 router.delete('/:id', verifyToken, requireRole(['admin', 'faculty']), materialsController.deleteMaterial);

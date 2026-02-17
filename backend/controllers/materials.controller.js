@@ -202,16 +202,47 @@ const createMaterial = async (req, res) => {
 const deleteMaterial = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // First, get the material to check ownership and get file_url
+    const getMaterial = await pool.query(
+      'SELECT * FROM teaching_materials WHERE id = $1',
+      [id]
+    );
+
+    if (getMaterial.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teaching material not found'
+      });
+    }
+
+    const material = getMaterial.rows[0];
+
+    // Check ownership if user is faculty (admin can delete any)
+    if (req.user.role === 'faculty' && material.created_by !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only delete your own teaching materials'
+      });
+    }
+
+    // Delete from database
     const result = await pool.query(
       'DELETE FROM teaching_materials WHERE id = $1 RETURNING *',
       [id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Teaching material not found'
-      });
+    // Delete physical file if it exists
+    if (material.file_url) {
+      const filePath = path.join(__dirname, '..', material.file_url);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (fileError) {
+          console.error('Error deleting file:', fileError);
+          // Continue even if file deletion fails
+        }
+      }
     }
 
     res.json({

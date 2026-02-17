@@ -178,7 +178,7 @@ A complete implementation of the academic research management system according t
   "cors": "^2.8.5",
   "dotenv": "^16.3.1",
   "express": "^4.18.2",
-  "express-rate-limit": "^7.x.x",
+  "express-rate-limit": "^8.2.1",
   "express-validator": "^7.0.1",
   "jsonwebtoken": "^9.0.2",
   "multer": "^2.0.2",

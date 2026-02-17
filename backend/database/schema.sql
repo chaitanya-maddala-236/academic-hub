@@ -225,11 +225,13 @@ CREATE INDEX idx_awards_year ON awards(year);
 CREATE INDEX idx_student_projects_faculty ON student_projects(faculty_id);
 CREATE INDEX idx_student_projects_type ON student_projects(project_type);
 
--- Insert default users with specified credentials
--- Password hashes generated using bcrypt with salt rounds of 10
--- Admin: admin@vnrvjiet.ac.in / Admin@123
--- Faculty: faculty@vnrvjiet.ac.in / Faculty@123
--- Student: student@vnrvjiet.ac.in / Student@123
+-- Insert default users with pre-generated password hashes
+-- Password hashes were generated using bcrypt with 10 salt rounds
+-- To generate hashes in Node.js: await bcrypt.hash('password', 10)
+-- Default test accounts (username / password):
+--   admin@vnrvjiet.ac.in / Admin@123 (role: admin)
+--   faculty@vnrvjiet.ac.in / Faculty@123 (role: faculty)
+--   student@vnrvjiet.ac.in / Student@123 (role: student)
 INSERT INTO users (email, password, role) VALUES 
 ('admin@vnrvjiet.ac.in', '$2b$10$uu/bnZ/9Che/nNjiflbjQeYPJCP0/wDlaOIZg38vx87DxFkX8xeA.', 'admin'),
 ('faculty@vnrvjiet.ac.in', '$2b$10$lJ1Jrh5PvSkBdQuex1vVWu3grRqT4p2Scw4VwK5NJlRGIi8lWVzVa', 'faculty'),
