@@ -1,0 +1,105 @@
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+const pool = require('./config/db');
+const errorHandler = require('./middleware/error.middleware');
+
+// Import routes
+const authRoutes = require('./routes/auth.routes');
+const facultyRoutes = require('./routes/faculty.routes');
+const publicationsRoutes = require('./routes/publications.routes');
+const patentsRoutes = require('./routes/patents.routes');
+const ipAssetsRoutes = require('./routes/ipAssets.routes');
+const projectsRoutes = require('./routes/projects.routes');
+const labsRoutes = require('./routes/labs.routes');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// API routes with /api prefix
+app.use('/api/auth', authRoutes);
+app.use('/api/faculty', facultyRoutes);
+app.use('/api/publications', publicationsRoutes);
+app.use('/api/patents', patentsRoutes);
+app.use('/api/ip-assets', ipAssetsRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/labs', labsRoutes);
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// Global error handler
+app.use(errorHandler);
+
+// Start server
+const startServer = async () => {
+  try {
+    // Test database connection
+    await pool.query('SELECT NOW()');
+    console.log('✓ Database connection established');
+
+    app.listen(PORT, () => {
+      console.log(`✓ Server is running on port ${PORT}`);
+      console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`✓ Health check: http://localhost:${PORT}/health`);
+      console.log(`✓ API base URL: http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error('✗ Failed to start server:', error.message);
+    process.exit(1);
+  }
+};
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\nShutting down gracefully...');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\nShutting down gracefully...');
+  await pool.end();
+  process.exit(0);
+});
+
+startServer();
