@@ -6,16 +6,14 @@
 
 -- Drop tables if exist (for fresh install)
 DROP TABLE IF EXISTS teaching_materials CASCADE;
-DROP TABLE IF EXISTS student_projects CASCADE;
 DROP TABLE IF EXISTS awards CASCADE;
+DROP TABLE IF EXISTS student_projects CASCADE;
 DROP TABLE IF EXISTS consultancy CASCADE;
-DROP TABLE IF EXISTS ipr CASCADE;
 DROP TABLE IF EXISTS publications CASCADE;
 DROP TABLE IF EXISTS patents CASCADE;
 DROP TABLE IF EXISTS ip_assets CASCADE;
 DROP TABLE IF EXISTS funded_projects CASCADE;
 DROP TABLE IF EXISTS research_labs CASCADE;
-DROP TABLE IF EXISTS research_centers CASCADE;
 DROP TABLE IF EXISTS faculty CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -39,7 +37,6 @@ CREATE TABLE faculty (
     bio TEXT,
     email VARCHAR(100) UNIQUE,
     profile_image TEXT,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INT REFERENCES users(id)
@@ -55,7 +52,6 @@ CREATE TABLE publications (
     indexing VARCHAR(50),
     national_international VARCHAR(20) CHECK (national_international IN ('national', 'international')),
     faculty_id INT REFERENCES faculty(id) ON DELETE CASCADE,
-    department VARCHAR(100),
     pdf_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -77,38 +73,49 @@ CREATE TABLE patents (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- IP Assets table
+-- IP Assets table (IPR - Patents, Trademarks, Copyrights)
 CREATE TABLE ip_assets (
     id SERIAL PRIMARY KEY,
-    name TEXT,
+    name TEXT NOT NULL,
     type VARCHAR(50) CHECK (type IN ('patent', 'copyright', 'trademark', 'design')),
     owner VARCHAR(100),
+    inventors TEXT,
     department VARCHAR(100),
     filing_year INT,
+    filing_date DATE,
+    published_date DATE,
+    granted_date DATE,
     expiry_date DATE,
-    status VARCHAR(50),
+    status VARCHAR(50) CHECK (status IN ('filed', 'published', 'granted', 'rejected', 'expired')),
+    application_number VARCHAR(100),
+    registration_number VARCHAR(100),
+    description TEXT,
+    pdf_url TEXT,
     commercialized BOOLEAN DEFAULT false,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    faculty_id INT REFERENCES faculty(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INT REFERENCES users(id)
 );
 
 -- Funded Projects table (Research Projects)
 CREATE TABLE funded_projects (
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    agency VARCHAR(200),
+    principal_investigator VARCHAR(100),
+    co_principal_investigator VARCHAR(100),
+    department VARCHAR(100),
+    funding_agency VARCHAR(100),
     agency_scientist VARCHAR(100),
     file_number VARCHAR(100),
-    amount_sanctioned NUMERIC,
+    sanctioned_amount NUMERIC,
     funds_per_year JSONB,
     start_date DATE,
     end_date DATE,
-    pi VARCHAR(100),
-    copi VARCHAR(200),
     objectives TEXT,
     deliverables TEXT,
     outcomes TEXT,
     team TEXT,
-    department VARCHAR(100),
     status VARCHAR(50),
     pdf_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -116,53 +123,16 @@ CREATE TABLE funded_projects (
     created_by INT REFERENCES users(id)
 );
 
--- Research Labs table
+-- Research Labs table (Research Centers)
 CREATE TABLE research_labs (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(150),
+    name VARCHAR(150) NOT NULL,
     department VARCHAR(100),
     head VARCHAR(100),
     description TEXT,
     focus_areas TEXT[],
     established_year INT,
     image_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by INT REFERENCES users(id)
-);
-
--- Research Centers table
-CREATE TABLE research_centers (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
-    description TEXT,
-    head VARCHAR(100),
-    department VARCHAR(100),
-    established_year INT,
-    focus_areas TEXT[],
-    facilities TEXT,
-    image_url TEXT,
-    website_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by INT REFERENCES users(id)
-);
-
--- IPR (Patents, Trademarks, Copyrights) table
-CREATE TABLE ipr (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    ipr_type VARCHAR(20) CHECK (ipr_type IN ('patent', 'trademark', 'copyright')),
-    application_number VARCHAR(100),
-    status VARCHAR(50) CHECK (status IN ('filed', 'published', 'granted', 'rejected')),
-    filing_date DATE,
-    publication_date DATE,
-    grant_date DATE,
-    inventors TEXT,
-    faculty_id INT REFERENCES faculty(id),
-    department VARCHAR(100),
-    description TEXT,
-    pdf_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INT REFERENCES users(id)
@@ -171,31 +141,15 @@ CREATE TABLE ipr (
 -- Consultancy table
 CREATE TABLE consultancy (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    client VARCHAR(200),
+    title VARCHAR(200) NOT NULL,
     faculty_id INT REFERENCES faculty(id),
+    client_name VARCHAR(200),
     department VARCHAR(100),
     amount_earned NUMERIC,
     start_date DATE,
     end_date DATE,
-    status VARCHAR(50),
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by INT REFERENCES users(id)
-);
-
--- Student Projects table (UG/PG)
-CREATE TABLE student_projects (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    project_type VARCHAR(20) CHECK (project_type IN ('UG', 'PG')),
-    students TEXT,
-    guide_id INT REFERENCES faculty(id),
-    department VARCHAR(100),
-    year INT,
-    abstract TEXT,
-    pdf_url TEXT,
+    status VARCHAR(50) CHECK (status IN ('ongoing', 'completed', 'cancelled')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INT REFERENCES users(id)
@@ -204,14 +158,14 @@ CREATE TABLE student_projects (
 -- Teaching Materials table
 CREATE TABLE teaching_materials (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    material_type VARCHAR(20) CHECK (material_type IN ('ppt', 'pdf', 'video')),
+    title VARCHAR(200) NOT NULL,
+    faculty_id INT REFERENCES faculty(id) ON DELETE CASCADE,
+    department VARCHAR(100),
+    course_name VARCHAR(100),
+    material_type VARCHAR(50) CHECK (material_type IN ('ppt', 'pdf', 'video', 'document', 'other')),
     file_url TEXT,
     video_link TEXT,
-    faculty_id INT REFERENCES faculty(id) ON DELETE CASCADE,
-    course_name VARCHAR(100),
-    department VARCHAR(100),
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INT REFERENCES users(id)
@@ -220,14 +174,30 @@ CREATE TABLE teaching_materials (
 -- Awards table
 CREATE TABLE awards (
     id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    recipient_type VARCHAR(20) CHECK (recipient_type IN ('faculty', 'student', 'department')),
-    recipient_name VARCHAR(100),
+    title VARCHAR(200) NOT NULL,
     faculty_id INT REFERENCES faculty(id),
     award_type VARCHAR(100),
-    awarding_body VARCHAR(200),
+    awarded_by VARCHAR(200),
     year INT,
+    date_received DATE,
     description TEXT,
+    certificate_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by INT REFERENCES users(id)
+);
+
+-- Student Projects table (Academic Projects - UG/PG)
+CREATE TABLE student_projects (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    faculty_id INT REFERENCES faculty(id),
+    student_names TEXT,
+    department VARCHAR(100),
+    project_type VARCHAR(50) CHECK (project_type IN ('UG', 'PG', 'PhD')),
+    academic_year VARCHAR(20),
+    abstract TEXT,
+    pdf_url TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INT REFERENCES users(id)
@@ -237,30 +207,31 @@ CREATE TABLE awards (
 CREATE INDEX idx_publications_faculty ON publications(faculty_id);
 CREATE INDEX idx_publications_year ON publications(year);
 CREATE INDEX idx_publications_type ON publications(publication_type);
-CREATE INDEX idx_publications_department ON publications(department);
 CREATE INDEX idx_patents_faculty ON patents(faculty_id);
 CREATE INDEX idx_patents_status ON patents(status);
 CREATE INDEX idx_patents_filing_date ON patents(filing_date);
+CREATE INDEX idx_ip_assets_type ON ip_assets(type);
+CREATE INDEX idx_ip_assets_status ON ip_assets(status);
+CREATE INDEX idx_ip_assets_faculty ON ip_assets(faculty_id);
 CREATE INDEX idx_projects_status ON funded_projects(status);
 CREATE INDEX idx_projects_department ON funded_projects(department);
 CREATE INDEX idx_faculty_department ON faculty(department);
-CREATE INDEX idx_faculty_user_id ON faculty(user_id);
 CREATE INDEX idx_labs_department ON research_labs(department);
-CREATE INDEX idx_research_centers_department ON research_centers(department);
-CREATE INDEX idx_ipr_faculty ON ipr(faculty_id);
-CREATE INDEX idx_ipr_status ON ipr(status);
-CREATE INDEX idx_ipr_type ON ipr(ipr_type);
 CREATE INDEX idx_consultancy_faculty ON consultancy(faculty_id);
-CREATE INDEX idx_student_projects_guide ON student_projects(guide_id);
+CREATE INDEX idx_consultancy_status ON consultancy(status);
 CREATE INDEX idx_teaching_materials_faculty ON teaching_materials(faculty_id);
 CREATE INDEX idx_awards_faculty ON awards(faculty_id);
+CREATE INDEX idx_awards_year ON awards(year);
+CREATE INDEX idx_student_projects_faculty ON student_projects(faculty_id);
+CREATE INDEX idx_student_projects_type ON student_projects(project_type);
 
--- Insert default users (passwords are hashed with bcrypt)
--- Admin: admin@vnrvjiet.ac.in / Admin@123
--- Faculty: faculty@vnrvjiet.ac.in / Faculty@123
--- Student: student@vnrvjiet.ac.in / Student@123
+-- Insert default users with pre-generated password hashes
+-- Password hashes were generated using bcrypt with 10 salt rounds
+-- Default test accounts:
+--   admin@vnrvjiet.ac.in  (role: admin, password: Admin@123)
+--   faculty@vnrvjiet.ac.in (role: faculty, password: Faculty@123)
+--   student@vnrvjiet.ac.in (role: student, password: Student@123)
 INSERT INTO users (email, password, role) VALUES 
-('admin@vnrvjiet.ac.in', '$2b$10$SbP8kf2bVApGMEUUWqfJF.q8yyJQd4FqjKx/b02dCxbhvYq0D8CRm', 'admin'),
-('faculty@vnrvjiet.ac.in', '$2b$10$F9MIr73/gtl7hb05icHrJuoXkjKfYXUoJ//0fZVE/YM4vNHTFsOpy', 'faculty'),
-('student@vnrvjiet.ac.in', '$2b$10$s8o16BSvSqlNm9om8R.JCOYdFCCMUHRG4mWQ4Je6bFFGm7YCjM4wC', 'student'),
-('admin@university.edu', '$2b$10$gIMLW.4dH1f41VRIzUYwiePTXi8InLDhqCySWLx9doNGhu9XDvGqu', 'admin');
+('admin@vnrvjiet.ac.in', '$2b$10$uu/bnZ/9Che/nNjiflbjQeYPJCP0/wDlaOIZg38vx87DxFkX8xeA.', 'admin'),
+('faculty@vnrvjiet.ac.in', '$2b$10$lJ1Jrh5PvSkBdQuex1vVWu3grRqT4p2Scw4VwK5NJlRGIi8lWVzVa', 'faculty'),
+('student@vnrvjiet.ac.in', '$2b$10$FRZ2llgu6ZzfZHlT8BsUL.Vr/SieChc1tQfFyMOPksK.P8K5yrZaC', 'student');

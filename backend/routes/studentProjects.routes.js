@@ -1,16 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/auth.middleware');
-const { authorizeRole } = require('../middleware/role.middleware');
 const studentProjectsController = require('../controllers/studentProjects.controller');
+const { verifyToken } = require('../middleware/auth.middleware');
+const { requireRole } = require('../middleware/role.middleware');
 
-// Public routes
+// Public routes - viewing student projects
 router.get('/', studentProjectsController.getAllStudentProjects);
 router.get('/:id', studentProjectsController.getStudentProjectById);
 
-// Protected routes - Faculty and Admin can create/update
-router.post('/', verifyToken, authorizeRole(['admin', 'faculty']), studentProjectsController.createStudentProject);
-router.put('/:id', verifyToken, authorizeRole(['admin', 'faculty']), studentProjectsController.updateStudentProject);
-router.delete('/:id', verifyToken, authorizeRole(['admin']), studentProjectsController.deleteStudentProject);
+// Protected routes - faculty and admin can create/update
+router.post('/', verifyToken, requireRole(['admin', 'faculty']), studentProjectsController.createStudentProject);
+router.put('/:id', verifyToken, requireRole(['admin', 'faculty']), studentProjectsController.updateStudentProject);
+
+// Admin only routes
+router.delete('/:id', verifyToken, requireRole(['admin']), studentProjectsController.deleteStudentProject);
 
 module.exports = router;

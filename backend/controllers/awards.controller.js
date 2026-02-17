@@ -1,44 +1,59 @@
 const pool = require('../config/db');
 
-// Get all awards with filters and pagination
-const getAllAwards = async (req, res, next) => {
+// Get all awards
+const getAllAwards = async (req, res) => {
   try {
-    const { recipient_type, faculty_id, year, page = 1, limit = 10 } = req.query;
+    const { faculty_id, year, award_type, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-
-    let query = 'SELECT * FROM awards WHERE 1=1';
-    const params = [];
-    let paramIndex = 1;
-
-    // Apply filters
-    if (recipient_type) {
-      query += ` AND recipient_type = $${paramIndex}`;
-      params.push(recipient_type);
-      paramIndex++;
-    }
+    
+    let queryText = `
+      SELECT a.*, f.name as faculty_name, f.department as faculty_department
+      FROM awards a
+      LEFT JOIN faculty f ON a.faculty_id = f.id
+      WHERE 1=1
+    `;
+    let countQueryText = `
+      SELECT COUNT(*)
+      FROM awards a
+      LEFT JOIN faculty f ON a.faculty_id = f.id
+      WHERE 1=1
+    `;
+    const queryParams = [];
+    let paramCount = 1;
 
     if (faculty_id) {
-      query += ` AND faculty_id = $${paramIndex}`;
-      params.push(faculty_id);
-      paramIndex++;
+      const condition = ` AND a.faculty_id = $${paramCount}`;
+      queryText += condition;
+      countQueryText += condition;
+      queryParams.push(faculty_id);
+      paramCount++;
     }
 
     if (year) {
-      query += ` AND year = $${paramIndex}`;
-      params.push(year);
-      paramIndex++;
+      const condition = ` AND a.year = $${paramCount}`;
+      queryText += condition;
+      countQueryText += condition;
+      queryParams.push(year);
+      paramCount++;
+    }
+
+    if (award_type) {
+      const condition = ` AND a.award_type ILIKE $${paramCount}`;
+      queryText += condition;
+      countQueryText += condition;
+      queryParams.push(`%${award_type}%`);
+      paramCount++;
     }
 
     // Get total count
-    const countQuery = `SELECT COUNT(*) FROM (${query}) as total`;
-    const countResult = await pool.query(countQuery, params);
+    const countResult = await pool.query(countQueryText, queryParams);
     const total = parseInt(countResult.rows[0].count);
 
-    // Apply pagination and sorting
-    query += ` ORDER BY year DESC, created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit, offset);
+    // Get paginated results
+    queryText += ` ORDER BY a.year DESC, a.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+    queryParams.push(limit, offset);
 
-    const result = await pool.query(query, params);
+    const result = await pool.query(queryText, queryParams);
 
     res.json({
       success: true,
@@ -51,17 +66,24 @@ const getAllAwards = async (req, res, next) => {
       }
     });
   } catch (error) {
-    next(error);
+    console.error('Error fetching awards:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching awards',
+      error: error.message
+    });
   }
 };
 
 // Get single award
-const getAwardById = async (req, res, next) => {
+const getAwardById = async (req, res) => {
   try {
     const { id } = req.params;
-
     const result = await pool.query(
-      'SELECT * FROM awards WHERE id = $1',
+      `SELECT a.*, f.name as faculty_name, f.department as faculty_department
+       FROM awards a
+       LEFT JOIN faculty f ON a.faculty_id = f.id
+       WHERE a.id = $1`,
       [id]
     );
 
@@ -77,29 +99,43 @@ const getAwardById = async (req, res, next) => {
       data: result.rows[0]
     });
   } catch (error) {
-    next(error);
+    console.error('Error fetching award:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching award',
+      error: error.message
+    });
   }
 };
 
 // Create award
-const createAward = async (req, res, next) => {
+const createAward = async (req, res) => {
   try {
     const {
       title,
-      recipient_type,
-      recipient_name,
       faculty_id,
       award_type,
-      awarding_body,
+      awarded_by,
       year,
-      description
+      date_received,
+      description,
+      certificate_url
     } = req.body;
+
+    // Validate required fields
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        message: 'Title is required'
+      });
+    }
 
     const result = await pool.query(
       `INSERT INTO awards 
-       (title, recipient_type, recipient_name, faculty_id, award_type, awarding_body, year, description, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, recipient_type, recipient_name, faculty_id, award_type, awarding_body, year, description, req.user?.id]
+       (title, faculty_id, award_type, awarded_by, year, date_received, description, certificate_url, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [title, faculty_id, award_type, awarded_by, year, date_received, description, certificate_url, req.user.id]
     );
 
     res.status(201).json({
@@ -108,39 +144,44 @@ const createAward = async (req, res, next) => {
       data: result.rows[0]
     });
   } catch (error) {
-    next(error);
+    console.error('Error creating award:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating award',
+      error: error.message
+    });
   }
 };
 
 // Update award
-const updateAward = async (req, res, next) => {
+const updateAward = async (req, res) => {
   try {
     const { id } = req.params;
     const {
       title,
-      recipient_type,
-      recipient_name,
       faculty_id,
       award_type,
-      awarding_body,
+      awarded_by,
       year,
-      description
+      date_received,
+      description,
+      certificate_url
     } = req.body;
 
     const result = await pool.query(
-      `UPDATE awards
+      `UPDATE awards 
        SET title = COALESCE($1, title),
-           recipient_type = COALESCE($2, recipient_type),
-           recipient_name = COALESCE($3, recipient_name),
-           faculty_id = COALESCE($4, faculty_id),
-           award_type = COALESCE($5, award_type),
-           awarding_body = COALESCE($6, awarding_body),
-           year = COALESCE($7, year),
-           description = COALESCE($8, description),
+           faculty_id = COALESCE($2, faculty_id),
+           award_type = COALESCE($3, award_type),
+           awarded_by = COALESCE($4, awarded_by),
+           year = COALESCE($5, year),
+           date_received = COALESCE($6, date_received),
+           description = COALESCE($7, description),
+           certificate_url = COALESCE($8, certificate_url),
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $9
        RETURNING *`,
-      [title, recipient_type, recipient_name, faculty_id, award_type, awarding_body, year, description, id]
+      [title, faculty_id, award_type, awarded_by, year, date_received, description, certificate_url, id]
     );
 
     if (result.rows.length === 0) {
@@ -156,15 +197,19 @@ const updateAward = async (req, res, next) => {
       data: result.rows[0]
     });
   } catch (error) {
-    next(error);
+    console.error('Error updating award:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating award',
+      error: error.message
+    });
   }
 };
 
 // Delete award
-const deleteAward = async (req, res, next) => {
+const deleteAward = async (req, res) => {
   try {
     const { id } = req.params;
-
     const result = await pool.query(
       'DELETE FROM awards WHERE id = $1 RETURNING *',
       [id]
@@ -182,7 +227,12 @@ const deleteAward = async (req, res, next) => {
       message: 'Award deleted successfully'
     });
   } catch (error) {
-    next(error);
+    console.error('Error deleting award:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting award',
+      error: error.message
+    });
   }
 };
 
