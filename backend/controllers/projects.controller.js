@@ -18,7 +18,7 @@ const calculateProjectStatus = (startDate, endDate) => {
 // Get all projects with filters and pagination
 const getAllProjects = async (req, res, next) => {
   try {
-    const { status, department, funding_agency, year, page = 1, limit = 10 } = req.query;
+    const { status, department, funding_agency, year, search, funded, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = 'SELECT * FROM funded_projects WHERE 1=1';
@@ -42,6 +42,16 @@ const getAllProjects = async (req, res, next) => {
       query += ` AND EXTRACT(YEAR FROM start_date) = $${paramIndex}`;
       params.push(year);
       paramIndex++;
+    }
+
+    if (search) {
+      query += ` AND (title ILIKE $${paramIndex} OR principal_investigator ILIKE $${paramIndex} OR objectives ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
+      paramIndex++;
+    }
+
+    if (funded === 'true') {
+      query += ` AND funding_agency IS NOT NULL AND funding_agency <> ''`;
     }
 
     // Get total count before applying status filter

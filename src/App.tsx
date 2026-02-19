@@ -8,6 +8,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
+import AddProject from "./pages/AddProject";
+import EditProject from "./pages/EditProject";
+import OngoingProjects from "./pages/OngoingProjects";
+import CompletedProjects from "./pages/CompletedProjects";
+import DepartmentProjects from "./pages/DepartmentProjects";
+import Analytics from "./pages/Analytics";
 import Publications from "./pages/Publications";
 import PublicationDetail from "./pages/PublicationDetail";
 import Faculty from "./pages/Faculty";
@@ -39,7 +45,13 @@ const App = () => (
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/projects" element={<Projects />} />
+                    <Route path="/projects/add" element={<AddProject />} />
+                    <Route path="/projects/:id/edit" element={<EditProject />} />
                     <Route path="/projects/:id" element={<ProjectDetail />} />
+                    <Route path="/ongoing-projects" element={<OngoingProjects />} />
+                    <Route path="/completed-projects" element={<CompletedProjects />} />
+                    <Route path="/department-projects" element={<DepartmentProjects />} />
+                    <Route path="/analytics" element={<Analytics />} />
                     <Route path="/publications" element={<Publications />} />
                     <Route path="/publications/:id" element={<PublicationDetail />} />
                     <Route path="/faculty" element={<Faculty />} />
