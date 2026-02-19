@@ -1,11 +1,13 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/services/api";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Plus } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 export default function Projects() {
@@ -13,6 +15,7 @@ export default function Projects() {
   const [search, setSearch] = useState(searchParams.get("q") ?? "");
   const [department, setDepartment] = useState("all");
   const [year, setYear] = useState("all");
+  const { hasRole } = useAuth();
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -68,6 +71,13 @@ export default function Projects() {
         <h1 className="text-3xl font-bold">Projects</h1>
         <p className="text-muted-foreground mt-1">Browse all approved academic projects</p>
       </div>
+      {hasRole("admin") && (
+        <div className="flex justify-end">
+          <Button asChild>
+            <Link to="/projects/add"><Plus className="mr-2 h-4 w-4" />Add Project</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">

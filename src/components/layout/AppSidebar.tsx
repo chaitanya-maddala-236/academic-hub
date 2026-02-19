@@ -12,6 +12,10 @@ import {
   Lightbulb,
   Banknote,
   FlaskConical,
+  Activity,
+  CheckCircle,
+  Building2,
+  BarChart2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,10 +36,14 @@ import { Button } from "@/components/ui/button";
 const publicItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Projects", url: "/projects", icon: FolderOpen },
+  { title: "Ongoing Projects", url: "/ongoing-projects", icon: Activity },
+  { title: "Completed Projects", url: "/completed-projects", icon: CheckCircle },
+  { title: "Funded Projects", url: "/funded-projects", icon: Banknote },
+  { title: "Dept. Projects", url: "/department-projects", icon: Building2 },
+  { title: "Analytics", url: "/analytics", icon: BarChart2 },
   { title: "Publications", url: "/publications", icon: BookOpen },
   { title: "Patents", url: "/patents", icon: ShieldCheck },
   { title: "IP Assets", url: "/ip-assets", icon: Lightbulb },
-  { title: "Funded Projects", url: "/funded-projects", icon: Banknote },
   { title: "Research Labs", url: "/research-labs", icon: FlaskConical },
   { title: "Faculty Profiles", url: "/faculty", icon: Users },
 ];

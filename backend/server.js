@@ -19,6 +19,7 @@ const consultancyRoutes = require('./routes/consultancy.routes');
 const materialsRoutes = require('./routes/materials.routes');
 const awardsRoutes = require('./routes/awards.routes');
 const studentProjectsRoutes = require('./routes/studentProjects.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -60,6 +61,7 @@ app.use('/api/consultancy', consultancyRoutes);
 app.use('/api/materials', materialsRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/student-projects', studentProjectsRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404 handler
 app.use((req, res) => {
