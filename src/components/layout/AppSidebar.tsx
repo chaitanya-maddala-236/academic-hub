@@ -12,6 +12,7 @@ import {
   LogIn,
   LogOut,
   BarChart2,
+  Microscope,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,9 +20,10 @@ import { useState } from "react";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Research", url: "/research", icon: Microscope },
   { title: "Research Projects", url: "/projects", icon: FolderKanban },
   { title: "Research Dashboard", url: "/research-dashboard", icon: BarChart2 },
-  { title: "Publications", url: "/publications", icon: BookOpen, placeholder: true },
+  { title: "Publications", url: "/publications", icon: BookOpen },
   { title: "Academic Projects", url: "/academic-projects", icon: GraduationCap, placeholder: true },
   { title: "Patents", url: "/patents", icon: ShieldCheck, placeholder: true },
   { title: "IP Assets", url: "/ip-assets", icon: Lightbulb, placeholder: true },
