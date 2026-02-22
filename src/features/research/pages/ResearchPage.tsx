@@ -9,6 +9,33 @@ import ProjectDetailModal from '../components/ProjectDetailModal';
 import { useProjects } from '../hooks/useProjects';
 import { ResearchProject } from '../services/researchApi';
 
+const MAX_VISIBLE_PAGES = 7;
+
+function PaginationButtons({ page, totalPages, onPage }: { page: number; totalPages: number; onPage: (p: number) => void }) {
+  const visible = Math.min(MAX_VISIBLE_PAGES, totalPages);
+  const half = Math.floor(visible / 2);
+  let start = Math.max(1, page - half);
+  const end = Math.min(totalPages, start + visible - 1);
+  if (end - start < visible - 1) start = Math.max(1, end - visible + 1);
+  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+  return (
+    <>
+      {pages.map((p) => (
+        <Button
+          key={p}
+          variant={page === p ? 'default' : 'outline'}
+          size="icon"
+          className="h-8 w-8 text-xs"
+          onClick={() => onPage(p)}
+        >
+          {p}
+        </Button>
+      ))}
+    </>
+  );
+}
+
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
@@ -194,23 +221,7 @@ export default function ResearchPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
-                const half = Math.floor(Math.min(7, totalPages) / 2);
-                let start = Math.max(1, page - half);
-                const end = Math.min(totalPages, start + Math.min(7, totalPages) - 1);
-                if (end - start < Math.min(7, totalPages) - 1) start = Math.max(1, end - Math.min(7, totalPages) + 1);
-                return start + i;
-              }).map((p) => (
-                <Button
-                  key={p}
-                  variant={page === p ? 'default' : 'outline'}
-                  size="icon"
-                  className="h-8 w-8 text-xs"
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </Button>
-              ))}
+              <PaginationButtons page={page} totalPages={totalPages} onPage={setPage} />
               <Button
                 variant="outline"
                 size="sm"

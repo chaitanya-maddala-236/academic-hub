@@ -20,6 +20,8 @@ const getAllProjects = async (req, res, next) => {
     const conditions = [];
 
     if (search) {
+      // Escape ILIKE pattern metacharacters (%_\) so user input is treated as literal text.
+      // SQL injection is already prevented by the parameterized query ($N placeholder).
       const escaped = search.replace(/[%_\\]/g, '\\$&');
       conditions.push(`(title ILIKE $${idx} OR principal_investigator ILIKE $${idx} OR funding_agency ILIKE $${idx} OR department ILIKE $${idx})`);
       params.push(`%${escaped}%`);
