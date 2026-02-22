@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import { projectsApi, Project } from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
@@ -9,7 +9,7 @@ export default function OngoingProjects() {
   const { data: projects, isLoading } = useQuery({
     queryKey: ["ongoing-projects"],
     queryFn: async () => {
-      const response = await api.get<any>("/projects?status=ongoing&page=1&limit=1000", false);
+      const response = await projectsApi.getProjects({ status: "ongoing", page: 1, limit: 1000 });
       return response.data ?? [];
     },
   });
@@ -30,7 +30,7 @@ export default function OngoingProjects() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {projects?.map((project: any) => (
+        {projects?.map((project: Project) => (
           <Card key={project.id} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6 space-y-3">
               <div className="flex items-start justify-between gap-2">
@@ -45,16 +45,16 @@ export default function OngoingProjects() {
               {project.department && (
                 <p className="text-sm text-muted-foreground">{project.department}</p>
               )}
-              {project.principal_investigator && (
-                <p className="text-sm">PI: {project.principal_investigator}</p>
+              {project.principalInvestigator && (
+                <p className="text-sm">PI: {project.principalInvestigator}</p>
               )}
-              {project.funding_agency && (
-                <Badge variant="secondary" className="text-xs">{project.funding_agency}</Badge>
+              {project.fundingAgency && (
+                <Badge variant="secondary" className="text-xs">{project.fundingAgency}</Badge>
               )}
-              {project.start_date && project.end_date && (
+              {project.startDate && project.endDate && (
                 <p className="text-xs text-muted-foreground">
-                  {new Date(project.start_date).toLocaleDateString()} –{" "}
-                  {new Date(project.end_date).toLocaleDateString()}
+                  {new Date(project.startDate).toLocaleDateString()} –{" "}
+                  {new Date(project.endDate).toLocaleDateString()}
                 </p>
               )}
             </CardContent>

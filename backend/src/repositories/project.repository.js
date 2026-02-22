@@ -116,6 +116,7 @@ const getDashboardStats = async () => {
     .slice(0, 8);
 
   const uniqueAgencies = byAgency.filter(a => a.fundingAgency).length;
+  const uniqueFaculty = Object.keys(facultyMap).length;
 
   return {
     total,
@@ -123,6 +124,7 @@ const getDashboardStats = async () => {
     completed,
     totalFunding: totalFunding._sum.sanctionedAmount || 0,
     uniqueAgencies,
+    uniqueFaculty,
     topFaculty,
     projectsByYear,
     departmentChart,

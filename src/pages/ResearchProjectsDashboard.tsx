@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { projectsApi } from "@/services/api";
 import {
   DollarSign,
   FolderKanban,
@@ -29,21 +31,6 @@ const TABS = [
   { label: "Publications", href: "/publications", active: false },
   { label: "Patents", href: "/patents", active: false },
   { label: "IP Assets", href: "/ip-assets", active: false },
-];
-
-const STAT_CARDS: StatCard[] = [
-  { value: "77Cr+", label: "Total Funding", icon: DollarSign, iconBg: "#DBEAFE", iconColor: "#2563EB" },
-  { value: "30", label: "Projects", icon: FolderKanban, iconBg: "#DCFCE7", iconColor: "#16A34A" },
-  { value: "6", label: "Funding Agencies", icon: Building2, iconBg: "#FEF3C7", iconColor: "#D97706" },
-  { value: "22", label: "Faculty PIs", icon: Users, iconBg: "#EDE9FE", iconColor: "#7C3AED" },
-];
-
-const FUNDING_DETAILS = [
-  { label: "Amount Sanctioned", value: "₹77,00,00,000" },
-  { label: "Sanction Year", value: "2023–2024" },
-  { label: "Duration", value: "3 Years" },
-  { label: "Start Date", value: "01 Apr 2023" },
-  { label: "End Date", value: "31 Mar 2026" },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -153,10 +140,41 @@ function SearchFilterBar() {
   );
 }
 
-function StatCards() {
+function StatCards({ stats }: { stats?: { total: number; totalFunding: number; uniqueAgencies: number; uniqueFaculty: number } }) {
+  const cards: StatCard[] = [
+    {
+      value: stats ? `₹${(stats.totalFunding / 1e7).toFixed(0)}Cr+` : "—",
+      label: "Total Funding",
+      icon: DollarSign,
+      iconBg: "#DBEAFE",
+      iconColor: "#2563EB",
+    },
+    {
+      value: stats ? String(stats.total) : "—",
+      label: "Projects",
+      icon: FolderKanban,
+      iconBg: "#DCFCE7",
+      iconColor: "#16A34A",
+    },
+    {
+      value: stats ? String(stats.uniqueAgencies) : "—",
+      label: "Funding Agencies",
+      icon: Building2,
+      iconBg: "#FEF3C7",
+      iconColor: "#D97706",
+    },
+    {
+      value: stats ? String(stats.uniqueFaculty) : "—",
+      label: "Faculty PIs",
+      icon: Users,
+      iconBg: "#EDE9FE",
+      iconColor: "#7C3AED",
+    },
+  ];
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {STAT_CARDS.map((card) => (
+      {cards.map((card) => (
         <div
           key={card.label}
           className="flex items-center gap-4 rounded-xl p-5"
@@ -193,7 +211,20 @@ function StatCards() {
   );
 }
 
-function FundingDurationCard() {
+function FundingDurationCard({ stats }: { stats?: { totalFunding: number; projectsByYear: { year: number; count: number }[] } }) {
+  const fundingFormatted = stats
+    ? `₹${stats.totalFunding.toLocaleString()}`
+    : "—";
+  const sortedYears = [...(stats?.projectsByYear ?? [])].sort((a, b) => a.year - b.year);
+  const minYear = sortedYears.length ? sortedYears[0].year : undefined;
+  const maxYear = sortedYears.length ? sortedYears[sortedYears.length - 1].year : undefined;
+  const yearRange = minYear && maxYear ? `${minYear}–${maxYear}` : "—";
+
+  const fundingDetails = [
+    { label: "Total Funding", value: fundingFormatted },
+    { label: "Year Range", value: yearRange },
+  ];
+
   return (
     <div
       className="rounded-xl p-6"
@@ -207,12 +238,18 @@ function FundingDurationCard() {
         Funding &amp; Duration
       </h3>
       <div className="space-y-3">
-        {FUNDING_DETAILS.map(({ label, value }) => (
+        {fundingDetails.map(({ label, value }) => (
           <div key={label} className="flex items-center justify-between text-sm">
             <span style={{ color: "#6B7280" }}>{label}</span>
             <span className="font-medium" style={{ color: "#111827" }}>
               {value}
             </span>
+          </div>
+        ))}
+        {sortedYears.slice(-5).map(({ year, count }) => (
+          <div key={year} className="flex items-center justify-between text-sm">
+            <span style={{ color: "#6B7280" }}>{year}</span>
+            <span className="font-medium" style={{ color: "#111827" }}>{count} project{count !== 1 ? "s" : ""}</span>
           </div>
         ))}
       </div>
@@ -300,9 +337,9 @@ function DonutChart({
   );
 }
 
-function ProjectStatusCard() {
-  const active = 18;
-  const completed = 12;
+function ProjectStatusCard({ stats }: { stats?: { ongoing: number; completed: number } }) {
+  const active = stats?.ongoing ?? 0;
+  const completed = stats?.completed ?? 0;
 
   return (
     <div
@@ -355,11 +392,11 @@ function ProjectStatusCard() {
   );
 }
 
-function PaginationBar() {
+function PaginationBar({ total }: { total?: number }) {
   const [page, setPage] = useState(1);
-  const totalPages = 5;
-  const totalProjects = 30;
   const pageSize = 9;
+  const totalProjects = total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalProjects / pageSize));
 
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalProjects);
@@ -420,6 +457,13 @@ function PaginationBar() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ResearchProjectsDashboard() {
+  const { data: statsResp } = useQuery({
+    queryKey: ["project-stats"],
+    queryFn: () => projectsApi.getProjectStats(),
+  });
+
+  const stats = statsResp?.data;
+
   return (
     <div
       className="min-h-screen space-y-6 p-6"
@@ -442,16 +486,16 @@ export default function ResearchProjectsDashboard() {
       <SearchFilterBar />
 
       {/* Stat Cards */}
-      <StatCards />
+      <StatCards stats={stats} />
 
       {/* Details Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <FundingDurationCard />
-        <ProjectStatusCard />
+        <FundingDurationCard stats={stats} />
+        <ProjectStatusCard stats={stats} />
       </div>
 
       {/* Pagination */}
-      <PaginationBar />
+      <PaginationBar total={stats?.total} />
     </div>
   );
 }
