@@ -3,20 +3,14 @@ const { z } = require('zod');
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  abstract: z.string().optional(),
-  department: z.string().optional(),
-  fundingAgency: z.string().optional(),
-  agencyScientist: z.string().optional(),
-  fileNumber: z.string().optional(),
-  sanctionedAmount: z.number().optional(),
-  startDate: z.string().datetime({ offset: true }).optional().transform(v => v ? new Date(v) : undefined),
-  endDate: z.string().datetime({ offset: true }).optional().transform(v => v ? new Date(v) : undefined),
   principalInvestigator: z.string().optional(),
   coPrincipalInvestigator: z.string().optional(),
-  teamMembers: z.any().optional(),
-  deliverables: z.string().optional(),
-  outcomes: z.string().optional(),
-  attachments: z.any().optional(),
+  department: z.string().optional(),
+  fundingAgency: z.string().optional(),
+  startDate: z.string().optional(),
+  sanctionedAmount: z.number().optional(),
+  duration: z.string().optional(),
+  status: z.enum(['ONGOING', 'COMPLETED', 'ongoing', 'completed']).optional(),
 });
 
 const getAll = async (req, res, next) => {
@@ -46,7 +40,7 @@ const create = async (req, res, next) => {
   try {
     const parsed = projectSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.errors[0].message });
-    const project = await service.createProject({ ...parsed.data, createdBy: req.user?.id });
+    const project = await service.createProject(parsed.data);
     res.status(201).json({ success: true, data: project });
   } catch (err) { next(err); }
 };

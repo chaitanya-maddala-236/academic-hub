@@ -67,17 +67,17 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 export default function Index() {
 
-  
+
   const { data: statsResp, isLoading: statsLoading } = useQuery({
     queryKey: ["v1-dashboard"],
-    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: DashboardStats }>("/projects/dashboard"),
+    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: DashboardStats }>("/v1/projects/dashboard"),
   });
 
   const { data: recentResp } = useQuery({
     queryKey: ["v1-recent-projects"],
     queryFn: () =>
       axiosInstance.get<unknown, { success: boolean; data: Project[]; meta: { total: number } }>(
-        "/projects?page=1&limit=5&sortBy=createdAt&sortOrder=desc"
+        "/v1/projects?page=1&limit=5&sortBy=createdAt&sortOrder=desc"
       ),
   });
 

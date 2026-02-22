@@ -48,7 +48,7 @@ export const getCurrentUser = (): User | null => {
 export const api = {
   get: <T>(endpoint: string, requiresAuth = true): Promise<T> => {
     if (!requiresAuth) {
-      return publicAxiosInstance.get(endpoint).then(r => r.data);
+      return publicAxiosInstance.get<T>(endpoint).then(r => r.data);
     }
     return axiosInstance.get(endpoint) as unknown as Promise<T>;
   },

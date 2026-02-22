@@ -4,6 +4,9 @@ const pool = require('../../config/db');
  * GET /api/v1/research
  * Returns combined publications + projects.
  * Query params: type (publication|project|all), department, year, status, indexing, search, page, limit
+ *
+ * NOTE: The `publications` table does NOT have a separate `faculty` table.
+ * It stores department, authors, and faculty_id directly.
  */
 const getResearch = async (req, res, next) => {
   try {
@@ -23,29 +26,26 @@ const getResearch = async (req, res, next) => {
     // ── Fetch publications (pg Pool) ─────────────────────────────────────────
     if (type === 'all' || type === 'publication') {
       let query = `
-        SELECT p.id, p.title, p.authors, p.journal_name, p.publication_type,
-               p.year, p.indexing, p.doi, p.abstract, p.national_international,
-               p.pdf_url, p.created_at,
-               f.name as faculty_name, f.department
-        FROM publications p
-        LEFT JOIN faculty f ON p.faculty_id = f.id
+        SELECT id, title, authors, journal_name, publication_type,
+               year, indexing, doi, abstract, national_international,
+               pdf_url, created_at, department
+        FROM publications
         WHERE 1=1
       `;
       const params = [];
       let idx = 1;
 
-      if (department) { query += ` AND f.department = $${idx++}`; params.push(department); }
-      if (year) { query += ` AND p.year = $${idx++}`; params.push(Number(year)); }
-      if (indexing) { query += ` AND p.indexing ILIKE $${idx++}`; params.push(`%${indexing}%`); }
+      if (department) { query += ` AND department ILIKE $${idx++}`; params.push(`%${department}%`); }
+      if (year) { query += ` AND year = $${idx++}`; params.push(Number(year)); }
+      if (indexing) { query += ` AND indexing ILIKE $${idx++}`; params.push(`%${indexing}%`); }
       if (search) {
-        // Escape special ILIKE pattern characters to prevent pattern injection
         const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
-        query += ` AND (p.title ILIKE $${idx} OR p.authors ILIKE $${idx} OR f.name ILIKE $${idx})`;
+        query += ` AND (title ILIKE $${idx} OR authors ILIKE $${idx})`;
         params.push(`%${escapedSearch}%`);
         idx++;
       }
 
-      query += ` ORDER BY p.year DESC, p.created_at DESC`;
+      query += ` ORDER BY year DESC NULLS LAST, created_at DESC`;
 
       const result = await pool.query(query, params);
       result.rows.forEach((pub) => {
@@ -62,7 +62,7 @@ const getResearch = async (req, res, next) => {
           doi: pub.doi || null,
           abstract: pub.abstract || null,
           scope: pub.national_international || null,
-          facultyName: pub.faculty_name || null,
+          facultyName: null,
           pdfUrl: pub.pdf_url || null,
           createdAt: pub.created_at,
         });
@@ -81,7 +81,7 @@ const getResearch = async (req, res, next) => {
       const params = [];
       let idx = 1;
 
-      if (department) { query += ` AND department = $${idx++}`; params.push(department); }
+      if (department) { query += ` AND department ILIKE $${idx++}`; params.push(`%${department}%`); }
       if (year) { query += ` AND EXTRACT(YEAR FROM sanction_date) = $${idx++}`; params.push(Number(year)); }
       if (status) {
         query += ` AND status = $${idx++}`;
@@ -109,6 +109,7 @@ const getResearch = async (req, res, next) => {
           coPi: p.co_investigators || null,
           amount: p.amount_lakhs ? Number(p.amount_lakhs) : null,
           status: p.status ? p.status.toLowerCase() : null,
+          startDate: p.sanction_date ? new Date(p.sanction_date).toISOString() : null,
           createdAt: p.created_at,
         });
       });
@@ -123,7 +124,7 @@ const getResearch = async (req, res, next) => {
 
     const total = items.length;
     const pageNum = Math.max(1, Number(page));
-    const limitNum = Math.min(100, Math.max(1, Number(limit)));
+    const limitNum = Math.min(200, Math.max(1, Number(limit)));
     const paginated = items.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({
@@ -142,19 +143,18 @@ const getResearch = async (req, res, next) => {
  */
 const getResearchStats = async (req, res, next) => {
   try {
-    // Publications stats (pg Pool — publications table)
+    // Publications stats — publications table only (no faculty join needed)
     const pubResult = await pool.query(`
       SELECT
         COUNT(*) as total,
         COUNT(CASE WHEN indexing IS NOT NULL AND indexing <> '' THEN 1 END) as indexed,
-        array_agg(DISTINCT f.department) FILTER (WHERE f.department IS NOT NULL) as pub_departments
-      FROM publications p
-      LEFT JOIN faculty f ON p.faculty_id = f.id
+        array_agg(DISTINCT department) FILTER (WHERE department IS NOT NULL AND department <> '') as pub_departments
+      FROM publications
     `);
     const pubRow = pubResult.rows[0];
     const pubDepts = pubRow.pub_departments ?? [];
 
-    // Projects stats (pg Pool — "researchProject" table)
+    // Projects stats — "researchProject" table
     const projResult = await pool.query(`
       SELECT
         COUNT(*)::int                                                           AS total_projects,

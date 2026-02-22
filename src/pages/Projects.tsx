@@ -19,14 +19,13 @@ interface Project {
 }
 
 interface ApiResponse {
-  total: number;
-  page: number;
-  totalPages: number;
+  success: boolean;
   data: Project[];
+  meta: { page: number; limit: number; total: number };
 }
 
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "ME", "IT", "CE", "H&S"];
-const STATUSES = ["ONGOING", "COMPLETED"];
+const STATUSES = ["ongoing", "completed", "upcoming"];
 const FUNDING_AGENCIES = ["AICTE", "DST", "DRDO", "UGC", "SERB", "MSME"];
 const YEARS = Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i));
 const BUDGETS = [
@@ -151,23 +150,23 @@ export default function Projects() {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(LIMIT),
-    sort: "newest",
+    sortBy: "createdAt",
+    sortOrder: "desc",
     ...(debouncedSearch && { search: debouncedSearch }),
     ...(department && { department }),
     ...(status && { status }),
-    ...(funding && { funding }),
+    ...(funding && { agency: funding }),
     ...(year && { year }),
-    ...(minBudget && { minBudget }),
   });
 
   const { data, isLoading } = useQuery<ApiResponse>({
     queryKey: ["projects", params.toString()],
-    queryFn: () => axiosInstance.get(`/projects?${params.toString()}`),
+    queryFn: () => axiosInstance.get(`/v1/projects?${params.toString()}`),
   });
 
   const projects = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const totalPages = data?.totalPages ?? Math.ceil(total / LIMIT);
+  const total = data?.meta?.total ?? 0;
+  const totalPages = data?.meta ? Math.ceil(data.meta.total / LIMIT) : 0;
 
   return (
     <div className="space-y-6">
@@ -218,7 +217,7 @@ export default function Projects() {
         >
           <option value="">All Status</option>
           {STATUSES.map((s) => (
-            <option key={s} value={s}>{s === "ONGOING" ? "Ongoing" : "Completed"}</option>
+            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
           ))}
         </select>
 
