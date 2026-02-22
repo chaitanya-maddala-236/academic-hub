@@ -8,7 +8,7 @@ const getAllProjects = async (req, res, next) => {
       limit = 10,
       search = '',
       status,
-      department,
+      department, 
       funding,
       year,
       minBudget,
@@ -85,17 +85,32 @@ const getAllProjects = async (req, res, next) => {
 // Get single project by ID
 const getProjectById = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+
+    // 🔒 Validate ID properly
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid project ID',
+      });
+    }
+
     const result = await pool.query(
       `SELECT * FROM "researchProject" WHERE id = $1`,
-      [parseInt(id)]
+      [id]
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      });
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json({
+      success: true,
+      data: result.rows[0],
+    });
   } catch (error) {
     next(error);
   }

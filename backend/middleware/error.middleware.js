@@ -47,7 +47,7 @@ const errorHandler = (err, req, res, next) => {
       default:
         return res.status(500).json({
           success: false,
-          message: 'Database error occurred'
+          message: `Database error: ${err.message}`
         });
     }
   }

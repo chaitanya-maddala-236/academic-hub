@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
   credentials: true
 }));
 app.use(express.json());
@@ -70,25 +70,7 @@ app.use('/api/dashboard', dashboardRoutes);
 const v1Routes = require('./src/routes/index');
 app.use('/api/v1', v1Routes);
 
-// test
-app.get("/api/check-projects", async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM "researchProject" LIMIT 5'
-    );
-    res.json({
-      success: true,
-      count: result.rowCount,
-      data: result.rows,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-// test
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

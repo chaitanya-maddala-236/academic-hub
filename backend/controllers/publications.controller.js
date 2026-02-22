@@ -9,67 +9,56 @@ const getAllPublications = async (req, res, next) => {
       department,
       indexing,
       search,
-      faculty_id,
       page = 1,
       limit = 10
     } = req.query;
-    
-    const offset = (page - 1) * limit;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const offset = (pageNum - 1) * limitNum;
 
     let query = `
-      SELECT p.*, f.name as faculty_name, f.department
-      FROM publications p
-      LEFT JOIN faculty f ON p.faculty_id = f.id
+      SELECT *
+      FROM publications
       WHERE 1=1
     `;
+
     const params = [];
     let paramIndex = 1;
 
-    // Apply filters
     if (year) {
-      query += ` AND p.year = $${paramIndex}`;
-      params.push(year);
-      paramIndex++;
+      query += ` AND year = $${paramIndex++}`;
+      params.push(parseInt(year));
     }
 
     if (publication_type) {
-      query += ` AND p.publication_type = $${paramIndex}`;
+      query += ` AND publication_type = $${paramIndex++}`;
       params.push(publication_type);
-      paramIndex++;
     }
 
     if (department) {
-      query += ` AND f.department = $${paramIndex}`;
-      params.push(department);
-      paramIndex++;
+      query += ` AND department ILIKE $${paramIndex++}`;
+      params.push(`%${department}%`);
     }
 
     if (indexing) {
-      query += ` AND p.indexing = $${paramIndex}`;
+      query += ` AND indexing = $${paramIndex++}`;
       params.push(indexing);
-      paramIndex++;
     }
 
     if (search) {
-      query += ` AND p.title ILIKE $${paramIndex}`;
+      query += ` AND title ILIKE $${paramIndex++}`;
       params.push(`%${search}%`);
-      paramIndex++;
     }
 
-    if (faculty_id) {
-      query += ` AND p.faculty_id = $${paramIndex}`;
-      params.push(faculty_id);
-      paramIndex++;
-    }
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) FROM (${query}) as total`;
+    // Count
+    const countQuery = `SELECT COUNT(*)::int FROM (${query}) as total`;
     const countResult = await pool.query(countQuery, params);
-    const total = parseInt(countResult.rows[0].count);
+    const total = countResult.rows[0].count;
 
-    // Apply pagination and sorting
-    query += ` ORDER BY p.year DESC, p.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit, offset);
+    // Pagination
+    query += ` ORDER BY year DESC, created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(limitNum, offset);
 
     const result = await pool.query(query, params);
 
@@ -78,11 +67,12 @@ const getAllPublications = async (req, res, next) => {
       data: result.rows,
       pagination: {
         total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum)
       }
     });
+
   } catch (error) {
     next(error);
   }
@@ -91,13 +81,17 @@ const getAllPublications = async (req, res, next) => {
 // Get single publication
 const getPublicationById = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid publication ID'
+      });
+    }
 
     const result = await pool.query(
-      `SELECT p.*, f.name as faculty_name, f.department
-       FROM publications p
-       LEFT JOIN faculty f ON p.faculty_id = f.id
-       WHERE p.id = $1`,
+      `SELECT * FROM publications WHERE id = $1`,
       [id]
     );
 
@@ -112,6 +106,7 @@ const getPublicationById = async (req, res, next) => {
       success: true,
       data: result.rows[0]
     });
+
   } catch (error) {
     next(error);
   }
