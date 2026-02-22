@@ -9,6 +9,8 @@ http.interceptors.response.use(
   (err) => Promise.reject(new Error(err.response?.data?.message || err.message || 'Network error'))
 );
 
+// ── Types shared across the feature ─────────────────────────────────────────
+
 export interface ResearchProject {
   id: number;
   title: string;
@@ -21,6 +23,44 @@ export interface ResearchProject {
   duration: string | null;
   status: 'ONGOING' | 'COMPLETED';
   created_at: string;
+}
+
+export interface ResearchItem {
+  recordType: 'publication' | 'project';
+  id: number;
+  title: string;
+  department?: string | null;
+  year?: number | null;
+  // Publication fields
+  authors?: string | null;
+  journal?: string | null;
+  publicationType?: string | null;
+  indexing?: string[];
+  doi?: string | null;
+  abstract?: string | null;
+  scope?: string | null;
+  facultyName?: string | null;
+  pdfUrl?: string | null;
+  // Project fields
+  agency?: string | null;
+  pi?: string | null;
+  coPi?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  outcomes?: string | null;
+  deliverables?: string | null;
+  teamMembers?: { name?: string; role?: string }[] | null;
+  createdAt?: string | null;
+}
+
+export interface ResearchStats {
+  totalPublications: number;
+  indexedPublications: number;
+  totalProjects: number;
+  activeProjects: number;
+  departments: number;
 }
 
 export interface ProjectsResponse {
@@ -47,6 +87,41 @@ export interface ProjectsQueryParams {
   sort?: 'newest' | 'oldest';
 }
 
+// ── Unified Research API (v1) ────────────────────────────────────────────────
+
+export interface ResearchListParams {
+  type?: 'all' | 'publication' | 'project';
+  department?: string;
+  year?: number | string;
+  status?: string;
+  indexing?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const unifiedResearchApi = {
+  /** GET /api/v1/research — combined publications + projects */
+  getResearch: (params?: ResearchListParams): Promise<{ success: boolean; data: ResearchItem[]; meta: { page: number; limit: number; total: number } }> => {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined && v !== '')
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : '';
+    return http.get(`v1/research${qs ? '?' + qs : ''}`) as unknown as ReturnType<typeof unifiedResearchApi.getResearch>;
+  },
+
+  /** GET /api/v1/research/stats */
+  getResearchStats: (): Promise<{ success: boolean; data: ResearchStats }> =>
+    http.get('v1/research/stats') as unknown as Promise<{ success: boolean; data: ResearchStats }>,
+};
+
+// ── Projects CRUD API ────────────────────────────────────────────────────────
+
 export const researchProjectsApi = {
   getProjects: (params?: ProjectsQueryParams): Promise<ProjectsResponse> => {
     const qs = params
@@ -67,3 +142,4 @@ export const researchProjectsApi = {
   getDashboardStats: (): Promise<DashboardStats> =>
     http.get('dashboard/stats') as unknown as Promise<DashboardStats>,
 };
+
