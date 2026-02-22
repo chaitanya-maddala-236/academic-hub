@@ -1,149 +1,270 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import axiosInstance from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
+import {
+  ArrowLeft, Pencil, Users, Target, CheckSquare, TrendingUp, Paperclip,
+} from "lucide-react";
+
+interface TeamMember {
+  name?: string;
+  role?: string;
+}
+
+interface ProjectAttachment {
+  name?: string;
+  url?: string;
+}
+
+interface Project {
+  id: number;
+  title: string;
+  abstract?: string;
+  department?: string;
+  fundingAgency?: string;
+  agencyScientist?: string;
+  fileNumber?: string;
+  sanctionedAmount?: number;
+  startDate?: string;
+  endDate?: string;
+  principalInvestigator?: string;
+  coPrincipalInvestigator?: string;
+  teamMembers?: TeamMember[] | null;
+  deliverables?: string;
+  outcomes?: string;
+  attachments?: ProjectAttachment[] | null;
+  status?: string;
+}
+
+function StatusBadge({ status }: { status?: string }) {
+  const map: Record<string, { bg: string; text: string }> = {
+    ongoing: { bg: "#DCFCE7", text: "#16A34A" },
+    completed: { bg: "#F3F4F6", text: "#6B7280" },
+    upcoming: { bg: "#FEF3C7", text: "#F59E0B" },
+  };
+  const s = map[status ?? ""] ?? { bg: "#F3F4F6", text: "#6B7280" };
+  return (
+    <span className="px-3 py-1 rounded-full text-sm font-medium capitalize" style={{ backgroundColor: s.bg, color: s.text }}>
+      {status ?? "Unknown"}
+    </span>
+  );
+}
+
+function InfoCard({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <div className="rounded-xl p-4" style={{ backgroundColor: "#F8FAFC", border: "1px solid #E5E7EB" }}>
+      <p className="text-xs font-medium mb-1" style={{ color: "#6B7280" }}>{label}</p>
+      <p className="font-semibold text-sm" style={{ color: "#111827" }}>{value ?? "—"}</p>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-xl p-6"
+      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <Icon size={18} style={{ color: "#2563EB" }} />
+        <h3 className="font-semibold" style={{ color: "#111827" }}>{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function ProjectDetail() {
   const { id } = useParams();
   const { hasRole } = useAuth();
 
-  const { data: project, isLoading } = useQuery({
-    queryKey: ["project", id],
-    queryFn: async () => {
-      const response = await api.get<any>(`/projects/${id}`, false);
-      return response.data;
-    },
+  const { data: resp, isLoading } = useQuery({
+    queryKey: ["v1-project", id],
+    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: Project }>(`/projects/${id}`),
     enabled: !!id,
   });
 
-  if (isLoading) return <div className="text-muted-foreground">Loading...</div>;
-  if (!project) return <div className="text-muted-foreground">Project not found</div>;
+  if (isLoading) {
+    return (
+      <div className="space-y-4 max-w-4xl">
+        <div className="h-8 rounded-lg animate-pulse" style={{ backgroundColor: "#E5E7EB", width: "60%" }} />
+        <div className="h-48 rounded-xl animate-pulse" style={{ backgroundColor: "#E5E7EB" }} />
+      </div>
+    );
+  }
+
+  const project = resp?.data;
+  if (!project) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-lg font-medium" style={{ color: "#6B7280" }}>Project not found</p>
+        <Link to="/projects" className="mt-3 inline-block text-sm no-underline" style={{ color: "#2563EB" }}>
+          ← Back to Projects
+        </Link>
+      </div>
+    );
+  }
+
+  const teamList: TeamMember[] = Array.isArray(project.teamMembers) ? project.teamMembers : [];
+  const attachmentList: ProjectAttachment[] = Array.isArray(project.attachments) ? project.attachments : [];
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <Link to="/projects" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="mr-1 h-4 w-4" /> Back to Projects
+    <div className="space-y-6 max-w-4xl">
+      {/* Back */}
+      <Link to="/projects" className="inline-flex items-center gap-1 text-sm no-underline" style={{ color: "#6B7280" }}>
+        <ArrowLeft size={15} /> Back to Projects
       </Link>
 
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{project.title}</h1>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {project.department && <Badge>{project.department}</Badge>}
-            {project.start_date && <Badge variant="outline">{new Date(project.start_date).getFullYear()}</Badge>}
-            {project.funding_agency && <Badge variant="secondary">{project.funding_agency}</Badge>}
-            {project.status && (
-              <Badge variant={project.status === "ongoing" ? "default" : project.status === "completed" ? "secondary" : "outline"}>
-                {project.status}
-              </Badge>
-            )}
+      {/* Header Card */}
+      <div
+        className="rounded-xl p-6"
+        style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
+      >
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold leading-tight" style={{ color: "#111827" }}>{project.title}</h1>
+            <div className="flex items-center flex-wrap gap-3 mt-3">
+              <StatusBadge status={project.status} />
+              {project.fundingAgency && (
+                <span className="text-sm px-3 py-1 rounded-full" style={{ backgroundColor: "#DBEAFE", color: "#2563EB" }}>
+                  {project.fundingAgency}
+                </span>
+              )}
+              {(project.startDate || project.endDate) && (
+                <span className="text-sm" style={{ color: "#6B7280" }}>
+                  {project.startDate ? new Date(project.startDate).toLocaleDateString() : "?"}{" "}
+                  – {project.endDate ? new Date(project.endDate).toLocaleDateString() : "?"}
+                </span>
+              )}
+              {project.sanctionedAmount && (
+                <span className="text-sm font-semibold" style={{ color: "#111827" }}>
+                  ₹{project.sanctionedAmount.toLocaleString()}
+                </span>
+              )}
+            </div>
           </div>
+          {(hasRole("admin") || hasRole("faculty")) && (
+            <Link
+              to={`/projects/${id}/edit`}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium no-underline"
+              style={{ border: "1px solid #E5E7EB", color: "#374151" }}
+            >
+              <Pencil size={14} /> Edit
+            </Link>
+          )}
         </div>
-        {hasRole("admin") && (
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link to={`/projects/${id}/edit`}><Pencil className="mr-1 h-4 w-4" />Edit</Link>
-          </Button>
-        )}
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+          <InfoCard label="Department" value={project.department} />
+          <InfoCard label="Principal Investigator" value={project.principalInvestigator} />
+          <InfoCard label="Co-PI" value={project.coPrincipalInvestigator} />
+          <InfoCard label="File Number" value={project.fileNumber} />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Principal Investigator</p>
-            <p className="font-medium">{project.principal_investigator || "—"}</p>
-          </CardContent>
-        </Card>
-        {project.co_principal_investigator && (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Co-Principal Investigator</p>
-              <p className="font-medium">{project.co_principal_investigator}</p>
-            </CardContent>
-          </Card>
-        )}
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Amount Sanctioned</p>
-            <p className="font-medium">₹ {project.sanctioned_amount?.toLocaleString() || "—"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Funding Agency</p>
-            <p className="font-medium">{project.funding_agency || "—"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Start Date</p>
-            <p className="font-medium">{project.start_date ? new Date(project.start_date).toLocaleDateString() : "—"}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">End Date</p>
-            <p className="font-medium">{project.end_date ? new Date(project.end_date).toLocaleDateString() : "—"}</p>
-          </CardContent>
-        </Card>
-        {project.file_number && (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">File Number</p>
-              <p className="font-medium">{project.file_number}</p>
-            </CardContent>
-          </Card>
-        )}
-        {project.agency_scientist && (
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">Agency Scientist</p>
-              <p className="font-medium">{project.agency_scientist}</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {(project.objectives || project.deliverables || project.outcomes) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Project Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {project.objectives && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Objectives</p>
-                <p className="text-muted-foreground leading-relaxed mt-1">{project.objectives}</p>
-              </div>
-            )}
-            {project.deliverables && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Deliverables</p>
-                <p className="text-muted-foreground leading-relaxed mt-1">{project.deliverables}</p>
-              </div>
-            )}
-            {project.outcomes && (
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Outcomes</p>
-                <p className="text-muted-foreground leading-relaxed mt-1">{project.outcomes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* Abstract */}
+      {project.abstract && (
+        <SectionCard title="Abstract" icon={Target}>
+          <p className="text-sm leading-relaxed" style={{ color: "#374151" }}>{project.abstract}</p>
+        </SectionCard>
       )}
 
-      {project.team && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Team</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">{project.team}</p>
-          </CardContent>
-        </Card>
+      {/* Investigators */}
+      <SectionCard title="Investigators" icon={Users}>
+        <div className="flex flex-wrap gap-3">
+          {project.principalInvestigator && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ backgroundColor: "#DBEAFE", minWidth: 180 }}
+            >
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                style={{ backgroundColor: "#2563EB", color: "#FFFFFF" }}
+              >
+                {project.principalInvestigator[0]}
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: "#6B7280" }}>Principal Investigator</p>
+                <p className="text-sm font-semibold" style={{ color: "#1E3A8A" }}>{project.principalInvestigator}</p>
+              </div>
+            </div>
+          )}
+          {project.coPrincipalInvestigator && (
+            <div
+              className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{ backgroundColor: "#F0FDF4", minWidth: 180 }}
+            >
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                style={{ backgroundColor: "#16A34A", color: "#FFFFFF" }}
+              >
+                {project.coPrincipalInvestigator[0]}
+              </div>
+              <div>
+                <p className="text-xs font-medium" style={{ color: "#6B7280" }}>Co-PI</p>
+                <p className="text-sm font-semibold" style={{ color: "#15803D" }}>{project.coPrincipalInvestigator}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Team Members */}
+      {teamList.length > 0 && (
+        <SectionCard title="Team Members" icon={Users}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
+                <th className="text-left py-2 font-medium" style={{ color: "#6B7280" }}>Name</th>
+                <th className="text-left py-2 font-medium" style={{ color: "#6B7280" }}>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teamList.map((m, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                  <td className="py-2" style={{ color: "#111827" }}>{m.name ?? "—"}</td>
+                  <td className="py-2" style={{ color: "#6B7280" }}>{m.role ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+
+      {/* Deliverables */}
+      {project.deliverables && (
+        <SectionCard title="Deliverables" icon={CheckSquare}>
+          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#374151" }}>{project.deliverables}</p>
+        </SectionCard>
+      )}
+
+      {/* Outcomes */}
+      {project.outcomes && (
+        <SectionCard title="Outcomes" icon={TrendingUp}>
+          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#374151" }}>{project.outcomes}</p>
+        </SectionCard>
+      )}
+
+      {/* Attachments */}
+      {attachmentList.length > 0 && (
+        <SectionCard title="Attachments" icon={Paperclip}>
+          <div className="space-y-2">
+            {attachmentList.map((a, i) => (
+              <a
+                key={i}
+                href={a.url ?? "#"}
+                download
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm no-underline transition-colors"
+                style={{ border: "1px solid #E5E7EB", color: "#2563EB" }}
+              >
+                <Paperclip size={14} />
+                {a.name ?? `Attachment ${i + 1}`}
+                <span className="ml-auto text-xs" style={{ color: "#6B7280" }}>Download</span>
+              </a>
+            ))}
+          </div>
+        </SectionCard>
       )}
     </div>
   );

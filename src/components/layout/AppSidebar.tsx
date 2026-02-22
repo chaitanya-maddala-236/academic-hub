@@ -1,184 +1,157 @@
 import {
-  Home,
-  FolderOpen,
+  LayoutDashboard,
+  FolderKanban,
   BookOpen,
-  Users,
-  Shield,
-  LogIn,
-  LogOut,
   GraduationCap,
-  BookMarked,
   ShieldCheck,
   Lightbulb,
   Banknote,
   FlaskConical,
-  Activity,
-  CheckCircle,
-  Building2,
-  BarChart2,
+  Users,
+  Package,
+  LogIn,
+  LogOut,
 } from "lucide-react";
-import { NavLink } from "@/components/NavLink";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
-const publicItems = [
-  { title: "Dashboard", url: "/", icon: Home },
-  { title: "Projects", url: "/projects", icon: FolderOpen },
-  { title: "Ongoing Projects", url: "/ongoing-projects", icon: Activity },
-  { title: "Completed Projects", url: "/completed-projects", icon: CheckCircle },
-  { title: "Funded Projects", url: "/funded-projects", icon: Banknote },
-  { title: "Dept. Projects", url: "/department-projects", icon: Building2 },
-  { title: "Analytics", url: "/analytics", icon: BarChart2 },
-  { title: "Publications", url: "/publications", icon: BookOpen },
-  { title: "Patents", url: "/patents", icon: ShieldCheck },
-  { title: "IP Assets", url: "/ip-assets", icon: Lightbulb },
-  { title: "Research Labs", url: "/research-labs", icon: FlaskConical },
-  { title: "Faculty Profiles", url: "/faculty", icon: Users },
+const navItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Research Projects", url: "/projects", icon: FolderKanban },
+  { title: "Publications", url: "/publications", icon: BookOpen, placeholder: true },
+  { title: "Academic Projects", url: "/academic-projects", icon: GraduationCap, placeholder: true },
+  { title: "Patents", url: "/patents", icon: ShieldCheck, placeholder: true },
+  { title: "IP Assets", url: "/ip-assets", icon: Lightbulb, placeholder: true },
+  { title: "Consultancy Works", url: "/consultancy", icon: Banknote, placeholder: true },
+  { title: "Research Labs", url: "/research-labs", icon: FlaskConical, placeholder: true },
+  { title: "Faculty Profiles", url: "/faculty", icon: Users, placeholder: true },
+  { title: "Materials", url: "/materials", icon: Package, placeholder: true },
 ];
 
 export function AppSidebar() {
-  const { user, hasRole, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const isActive = (url: string) =>
+    url === "/" ? location.pathname === "/" : location.pathname.startsWith(url);
 
   return (
-    <Sidebar className="border-r-0">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-7 w-7 text-sidebar-primary" />
-          <div>
-            <h2 className="text-base font-bold text-sidebar-primary font-sans">
-              AcademicArchives
-            </h2>
-            <p className="text-xs text-sidebar-foreground/70">Research Platform</p>
-          </div>
+    <div
+      className="flex flex-col h-screen sticky top-0 transition-all duration-300 shrink-0"
+      style={{
+        width: collapsed ? 64 : 280,
+        backgroundColor: "#1E3A8A",
+        borderRight: "1px solid rgba(255,255,255,0.1)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 p-4 border-b"
+        style={{ borderColor: "rgba(255,255,255,0.1)" }}
+      >
+        <div
+          className="flex items-center justify-center rounded-lg shrink-0"
+          style={{ width: 36, height: 36, backgroundColor: "#2563EB" }}
+        >
+          <GraduationCap size={20} color="white" />
         </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider">
-            Browse
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {publicItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      <span>{item.title}</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {user && (hasRole("student") || hasRole("faculty")) && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider">
-              My Work
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {hasRole("student") && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/student-dashboard"
-                        className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <BookMarked className="mr-2 h-4 w-4" />
-                        <span>My Submissions</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-                {hasRole("faculty") && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/faculty-dashboard"
-                        className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <BookMarked className="mr-2 h-4 w-4" />
-                        <span>My Dashboard</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
+        {!collapsed && (
+          <div>
+            <p className="font-bold text-white text-sm leading-tight">AcademicHub</p>
+            <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Research Portal
+            </p>
+          </div>
         )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="ml-auto text-white opacity-60 hover:opacity-100"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? "→" : "←"}
+        </button>
+      </div>
 
-        {user && hasRole("admin") && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wider">
-              Admin
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/admin"
-                      className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <Shield className="mr-2 h-4 w-4" />
-                      <span>Admin Panel</span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-      </SidebarContent>
-
-      <SidebarFooter className="p-4">
-        {user ? (
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            onClick={signOut}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
-        ) : (
-          <SidebarMenuButton asChild>
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-2">
+        {navItems.map((item) => {
+          const active = isActive(item.url);
+          return (
             <NavLink
-              to="/login"
-              className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+              key={item.url}
+              to={item.url}
+              end={item.url === "/"}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-all duration-150 no-underline"
+              style={{
+                backgroundColor: active ? "#2563EB" : "transparent",
+                color: active ? "#FFFFFF" : "rgba(255,255,255,0.75)",
+                borderLeft: active ? "3px solid #DBEAFE" : "3px solid transparent",
+              }}
+              onMouseEnter={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(37,99,235,0.3)";
+                  (e.currentTarget as HTMLElement).style.color = "#FFFFFF";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!active) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)";
+                }
+              }}
             >
-              <LogIn className="mr-2 h-4 w-4" />
-              <span>Sign In</span>
+              <item.icon size={18} className="shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-medium truncate">
+                  {item.title}
+                  {item.placeholder && (
+                    <span
+                      className="ml-2 text-xs px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: "rgba(255,255,255,0.15)", fontSize: "10px" }}
+                    >
+                      Soon
+                    </span>
+                  )}
+                </span>
+              )}
             </NavLink>
-          </SidebarMenuButton>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-3 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+        {user ? (
+          <button
+            onClick={signOut}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-all"
+            style={{ color: "rgba(255,255,255,0.75)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(37,99,235,0.3)";
+              (e.currentTarget as HTMLElement).style.color = "#FFFFFF";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+              (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)";
+            }}
+          >
+            <LogOut size={18} />
+            {!collapsed && <span className="text-sm font-medium">Sign Out</span>}
+          </button>
+        ) : (
+          <NavLink
+            to="/login"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg no-underline"
+            style={{ color: "rgba(255,255,255,0.75)" }}
+          >
+            <LogIn size={18} />
+            {!collapsed && <span className="text-sm font-medium">Sign In</span>}
+          </NavLink>
         )}
-      </SidebarFooter>
-    </Sidebar>
+      </div>
+    </div>
   );
 }
+

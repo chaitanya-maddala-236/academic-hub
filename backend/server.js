@@ -63,6 +63,10 @@ app.use('/api/awards', awardsRoutes);
 app.use('/api/student-projects', studentProjectsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// NEW: /api/v1 routes (Prisma-based)
+const v1Routes = require('./src/routes/index');
+app.use('/api/v1', v1Routes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

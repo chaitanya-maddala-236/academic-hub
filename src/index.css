@@ -49,6 +49,17 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
+
+    --color-primary: #2563EB;
+    --color-primary-dark: #1E3A8A;
+    --color-primary-light: #DBEAFE;
+    --color-bg: #F8FAFC;
+    --color-card: #FFFFFF;
+    --color-border: #E5E7EB;
+    --color-text: #111827;
+    --color-text-secondary: #6B7280;
+    --color-green: #16A34A;
+    --color-amber: #F59E0B;
   }
 
   .dark {

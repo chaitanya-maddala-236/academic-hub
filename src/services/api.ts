@@ -1,20 +1,36 @@
-/**
- * API Service for backend communication
- * Base URL and authentication handling
- */
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
 
-/**
- * Get authentication token from localStorage
- */
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token');
-};
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
 
-/**
- * Get current user from localStorage
- */
+// Unauthenticated instance for public endpoints
+const publicAxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Request interceptor to add auth token
+axiosInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor for error handling
+axiosInstance.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const message = error.response?.data?.message || error.message || 'Network error';
+    return Promise.reject(new Error(message));
+  }
+);
+
 export interface User {
   id: number;
   email: string;
@@ -28,106 +44,19 @@ export const getCurrentUser = (): User | null => {
   return userStr ? JSON.parse(userStr) : null;
 };
 
-/**
- * Generic API request handler
- */
-interface ApiRequestOptions extends RequestInit {
-  requiresAuth?: boolean;
-}
-
-async function apiRequest<T>(
-  endpoint: string,
-  options: ApiRequestOptions = {}
-): Promise<T> {
-  const { requiresAuth = true, headers = {}, ...fetchOptions } = options;
-
-  const requestHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...headers,
-  };
-
-  // Add auth token if required
-  if (requiresAuth) {
-    const token = getAuthToken();
-    if (token) {
-      requestHeaders['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers: requestHeaders,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `API Error: ${response.status}`);
-    }
-
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Network error occurred');
-  }
-}
-
-/**
- * API Methods
- */
 export const api = {
-  // GET request
-  get: <T>(endpoint: string, requiresAuth = true): Promise<T> =>
-    apiRequest<T>(endpoint, { method: 'GET', requiresAuth }),
-
-  // POST request
-  post: <T>(endpoint: string, data?: any, requiresAuth = true): Promise<T> =>
-    apiRequest<T>(endpoint, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-      requiresAuth,
-    }),
-
-  // PUT request
-  put: <T>(endpoint: string, data?: any, requiresAuth = true): Promise<T> =>
-    apiRequest<T>(endpoint, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-      requiresAuth,
-    }),
-
-  // DELETE request
-  delete: <T>(endpoint: string, requiresAuth = true): Promise<T> =>
-    apiRequest<T>(endpoint, { method: 'DELETE', requiresAuth }),
-
-  // Upload file
-  upload: async <T>(endpoint: string, formData: FormData): Promise<T> => {
-    const token = getAuthToken();
-    const headers: HeadersInit = {};
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+  get: <T>(endpoint: string, requiresAuth = true): Promise<T> => {
+    if (!requiresAuth) {
+      return publicAxiosInstance.get(endpoint).then(r => r.data);
     }
-
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      body: formData,
-      headers,
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `Upload Error: ${response.status}`);
-    }
-
-    return data;
+    return axiosInstance.get(endpoint) as unknown as Promise<T>;
   },
+  post: <T>(endpoint: string, data?: unknown): Promise<T> =>
+    axiosInstance.post(endpoint, data) as unknown as Promise<T>,
+  put: <T>(endpoint: string, data?: unknown): Promise<T> =>
+    axiosInstance.put(endpoint, data) as unknown as Promise<T>,
+  delete: <T>(endpoint: string): Promise<T> =>
+    axiosInstance.delete(endpoint) as unknown as Promise<T>,
 };
 
-export default api;
+export default axiosInstance;
