@@ -3,7 +3,7 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-const pool = require('./config/db');
+const prisma = require('./src/lib/prisma');
 const errorHandler = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
 
@@ -81,8 +81,8 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
-    // Test database connection
-    await pool.query('SELECT NOW()');
+    // Test database connection via Prisma
+    await prisma.$queryRaw`SELECT NOW()`;
     console.log('✓ Database connection established');
 
     app.listen(PORT, () => {
@@ -112,13 +112,13 @@ process.on('unhandledRejection', (error) => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
-  await pool.end();
+  await prisma.$disconnect();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   console.log('\nShutting down gracefully...');
-  await pool.end();
+  await prisma.$disconnect();
   process.exit(0);
 });
 
