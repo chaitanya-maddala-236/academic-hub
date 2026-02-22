@@ -4,7 +4,6 @@ import { api } from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -14,119 +13,74 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Search,
   BookOpen,
-  FileText,
   Globe,
   Flag,
-  SlidersHorizontal,
-  X,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   ExternalLink,
-  User,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 const ITEMS_PER_PAGE = 10;
+type TabKey = "all" | "journals" | "conferences";
 
-type TabKey = "all" | "journals";
+const DEPT_OPTIONS = ["CSE", "ECE", "EEE", "ME", "IT", "CE", "H&S"];
+const INDEXING_OPTIONS = ["SCI", "Scopus", "WoS", "UGC"];
 
 export default function Publications() {
   const [search, setSearch] = useState("");
   const [sortYear, setSortYear] = useState("desc");
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
 
   const [filterYears, setFilterYears] = useState<number[]>([]);
   const [filterDepartments, setFilterDepartments] = useState<string[]>([]);
   const [filterPubType, setFilterPubType] = useState<string[]>([]);
-  const [filterScope, setFilterScope] = useState<string[]>([]);
   const [filterIndexing, setFilterIndexing] = useState<string[]>([]);
 
   const { data: publications, isLoading } = useQuery({
     queryKey: ["publications"],
     queryFn: async () => {
       const response = await api.get<any>("/publications?page=1&limit=1000", false);
-      // Transform backend data to match expected format
       const pubs = response.data ?? [];
       return pubs.map((pub: any) => ({
         ...pub,
-        // Map backend fields to expected frontend fields
         authors: pub.authors || "—",
-        journal: pub.journal_name || null,
-        conference: pub.publication_type === 'conference' ? pub.journal_name : null,
+        journal: pub.publication_type === "journal" ? pub.journal_name : null,
+        conference: pub.publication_type === "conference" ? pub.journal_name : null,
         publisher: pub.publisher || "—",
         doi: pub.doi || null,
         indexing: pub.indexing ? [pub.indexing] : [],
         pub_type: pub.national_international || "national",
         faculty: {
           name: pub.faculty_name || "—",
-          department_id: pub.department,
-          departments: {
-            name: pub.department || "—"
-          }
-        }
+          department: pub.department || "—",
+        },
       }));
     },
   });
 
-  const { data: departmentsData } = useQuery({
-    queryKey: ["faculty-for-departments"],
-    queryFn: async () => {
-      const response = await api.get<any>("/faculty?page=1&limit=1000", false);
-      return response.data ?? [];
-    },
-  });
-
-  // Extract unique departments from faculty
-  const departments = useMemo(() => {
-    if (!departmentsData) return [];
-    const deptSet = new Set<string>();
-    departmentsData.forEach((f: any) => {
-      if (f.department) deptSet.add(f.department);
-    });
-    return Array.from(deptSet).sort().map(name => ({ id: name, name, code: name }));
-  }, [departmentsData]);
+  const years = useMemo(() => {
+    if (!publications) return [];
+    return [...new Set(publications.map((p: any) => p.year))].filter(Boolean).sort((a, b) => b - a);
+  }, [publications]);
 
   const stats = useMemo(() => {
-    if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0, indexed: 0, yearRange: "" };
-    const yrs = publications.map((p: any) => p.year).filter(Boolean);
-    const minY = yrs.length ? Math.min(...yrs) : 0;
-    const maxY = yrs.length ? Math.max(...yrs) : 0;
+    if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0, indexed: 0 };
     return {
       total: publications.length,
       journals: publications.filter((p: any) => p.journal).length,
-      conferences: publications.filter((p: any) => p.conference && !p.journal).length,
+      conferences: publications.filter((p: any) => p.conference).length,
       international: publications.filter((p: any) => p.pub_type === "international").length,
-      national: publications.filter((p: any) => p.pub_type === "national" || (!p.pub_type && !p.journal?.toLowerCase().includes("international"))).length,
+      national: publications.filter((p: any) => p.pub_type !== "international").length,
       indexed: publications.filter((p: any) => p.indexing && p.indexing.length > 0).length,
-      yearRange: minY && maxY ? `${minY} - ${maxY}` : "",
     };
-  }, [publications]);
-
-  const years = useMemo(() => {
-    if (!publications) return [];
-    return [...new Set(publications.map((p: any) => p.year))].sort((a, b) => b - a);
-  }, [publications]);
-
-  const allIndexTypes = useMemo(() => {
-    if (!publications) return [];
-    const s = new Set<string>();
-    publications.forEach((p: any) => p.indexing?.forEach((i: string) => s.add(i)));
-    return [...s].sort();
   }, [publications]);
 
   const filtered = useMemo(() => {
@@ -134,6 +88,7 @@ export default function Publications() {
     let result = [...publications];
 
     if (activeTab === "journals") result = result.filter((p: any) => p.journal);
+    if (activeTab === "conferences") result = result.filter((p: any) => p.conference);
 
     if (search) {
       const s = search.toLowerCase();
@@ -148,20 +103,19 @@ export default function Publications() {
     }
 
     if (filterYears.length > 0) result = result.filter((p: any) => filterYears.includes(p.year));
-    if (filterDepartments.length > 0) result = result.filter((p: any) => filterDepartments.includes(p.faculty?.department_id));
+    if (filterDepartments.length > 0) result = result.filter((p: any) => filterDepartments.includes(p.faculty?.department));
     if (filterPubType.length > 0) {
       result = result.filter((p: any) => {
         if (filterPubType.includes("journal") && p.journal) return true;
-        if (filterPubType.includes("conference") && p.conference && !p.journal) return true;
+        if (filterPubType.includes("conference") && p.conference) return true;
         return false;
       });
     }
-    if (filterScope.length > 0) result = result.filter((p: any) => filterScope.includes(p.pub_type));
     if (filterIndexing.length > 0) result = result.filter((p: any) => p.indexing?.some((i: string) => filterIndexing.includes(i)));
 
     result.sort((a: any, b: any) => sortYear === "desc" ? b.year - a.year : a.year - b.year);
     return result;
-  }, [publications, activeTab, search, filterYears, filterDepartments, filterPubType, filterScope, filterIndexing, sortYear]);
+  }, [publications, activeTab, search, filterYears, filterDepartments, filterPubType, filterIndexing, sortYear]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -175,289 +129,256 @@ export default function Publications() {
     setFilterYears([]);
     setFilterDepartments([]);
     setFilterPubType([]);
-    setFilterScope([]);
     setFilterIndexing([]);
     setPage(1);
   };
 
-  const activeFilterCount = filterYears.length + filterDepartments.length + filterPubType.length + filterScope.length + filterIndexing.length;
-
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    const pages: number[] = [];
-    for (let i = 1; i <= Math.min(totalPages, 7); i++) pages.push(i);
-
-    return (
-      <div className="flex items-center justify-center gap-1 py-4">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-          <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-        </Button>
-        {pages.map((p) => (
-          <Button key={p} variant={page === p ? "default" : "outline"} size="icon" className="h-8 w-8 text-xs" onClick={() => setPage(p)}>
-            {p}
-          </Button>
-        ))}
-        {totalPages > 7 && <span className="px-2 text-muted-foreground">...</span>}
-        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-          Next <ChevronRight className="h-4 w-4 ml-1" />
-        </Button>
-      </div>
-    );
-  };
+  const activeFilterCount = filterYears.length + filterDepartments.length + filterPubType.length + filterIndexing.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="bg-primary rounded-xl px-6 py-6 text-primary-foreground">
+      <div className="bg-primary rounded-xl px-6 py-5 text-primary-foreground">
         <h1 className="text-2xl md:text-3xl font-bold tracking-wide uppercase">Publications</h1>
         <div className="w-12 h-1 bg-primary-foreground/60 mt-2 rounded" />
-        <p className="text-primary-foreground/80 mt-2 text-sm">Research Output of the Institution</p>
+        <p className="text-primary-foreground/80 mt-1 text-sm">Research Output of the Institution</p>
       </div>
 
-      {/* Search & Controls */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by Title / Faculty / Journal..." className="pl-9" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+      {/* Tabs + Sort row */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+        <div className="flex items-center gap-1">
+          {([
+            { key: "all" as TabKey, label: "All", count: stats.total },
+            { key: "journals" as TabKey, label: "Journals", count: stats.journals },
+            { key: "conferences" as TabKey, label: "Conferences", count: stats.conferences },
+          ]).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => { setActiveTab(t.key); setPage(1); }}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5",
+                activeTab === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {t.label}
+              <span className={cn("text-xs px-1.5 py-0.5 rounded-full", activeTab === t.key ? "bg-primary-foreground/20" : "bg-muted")}>{t.count}</span>
+            </button>
+          ))}
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => setShowFilters(!showFilters)}>
-          <SlidersHorizontal className="h-4 w-4" />
-          Filter
-          {activeFilterCount > 0 && <Badge variant="secondary" className="ml-1 text-xs">{activeFilterCount}</Badge>}
-        </Button>
-        <Select value={sortYear} onValueChange={setSortYear}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Sort By" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="desc">Year: Newest</SelectItem>
-            <SelectItem value="asc">Year: Oldest</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Stats / Tab Bar */}
-      <div className="flex flex-wrap items-center gap-4 border-b pb-3">
-        <button onClick={() => { setActiveTab("all"); setPage(1); }} className={cn("flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors", activeTab === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}>
-          <span className={cn("w-2 h-2 rounded-full", activeTab === "all" ? "bg-primary-foreground" : "bg-muted-foreground")} />
-          All
-        </button>
-        <button onClick={() => { setActiveTab("journals"); setPage(1); }} className={cn("flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors", activeTab === "journals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}>
-          Journals
-        </button>
-        <div className="hidden sm:flex items-center gap-4 ml-auto text-xs text-muted-foreground">
-          {stats.yearRange && <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{stats.yearRange}</span>}
-          <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{stats.indexed} Indexed</span>
-          <span className="flex items-center gap-1"><Globe className="h-3.5 w-3.5" />{stats.international} International</span>
-          <span className="flex items-center gap-1"><Flag className="h-3.5 w-3.5" />{stats.national} National</span>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="flex gap-6">
-        <div className="flex-1 min-w-0">
-          {isLoading && <div className="text-center py-16 text-muted-foreground">Loading publications...</div>}
-          {!isLoading && paginated.length === 0 && <div className="text-center py-16 text-muted-foreground">No publications found</div>}
-
-          {/* All tab — Card layout */}
-          {activeTab === "all" && !isLoading && paginated.length > 0 && (
-            <div className="space-y-4">
-              {paginated.map((pub: any, idx: number) => (
-                <Card key={pub.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-snug">
-                          <span className="text-muted-foreground mr-2">{(page - 1) * ITEMS_PER_PAGE + idx + 1}.</span>
-                          {pub.title}
-                        </p>
-                      </div>
-                      <Button asChild size="sm" variant="default" className="shrink-0 gap-1 text-xs">
-                        <Link to={`/publications/${pub.id}`}><Eye className="h-3 w-3" /> View Details</Link>
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 mt-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground text-xs">Faculty</span>
-                        <p className="font-medium">{pub.faculty?.name ?? "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Authors</span>
-                        <p className="font-medium">{pub.authors ?? "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">{pub.journal ? "Journal" : "Conference"}</span>
-                        <p className="font-medium">{pub.journal || pub.conference || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Publisher</span>
-                        <p className="font-medium">{pub.publisher ?? "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Type</span>
-                        <p className="font-medium capitalize">{pub.pub_type ?? "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Year</span>
-                        <p className="font-medium">{pub.year}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center flex-wrap gap-2 mt-3">
-                      {pub.indexing?.map((tag: string) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                      ))}
-                      {pub.doi && (
-                        <a href={`https://doi.org/${pub.doi}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline ml-auto">
-                          <ExternalLink className="h-3 w-3" /> Open DOI
-                        </a>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {renderPagination()}
-            </div>
-          )}
-
-          {/* Journals tab — Table layout */}
-          {activeTab === "journals" && !isLoading && paginated.length > 0 && (
-            <div>
-              <div className="bg-primary/10 px-4 py-2 rounded-t-lg">
-                <h2 className="text-sm font-bold text-primary uppercase tracking-wider">Journal Publications</h2>
-              </div>
-              <Card className="rounded-t-none">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-12">S.No</TableHead>
-                        <TableHead>Faculty Name</TableHead>
-                        <TableHead className="hidden md:table-cell">Author(s)</TableHead>
-                        <TableHead>Title / Journal</TableHead>
-                        <TableHead className="hidden sm:table-cell">Year</TableHead>
-                        <TableHead className="hidden lg:table-cell">Indexing</TableHead>
-                        <TableHead className="w-28">Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginated.map((pub: any, idx: number) => (
-                        <TableRow key={pub.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="text-muted-foreground text-sm">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</TableCell>
-                          <TableCell>
-                            <p className="font-medium text-sm">{pub.faculty?.name ?? "—"}</p>
-                            <p className="text-xs text-muted-foreground">{(pub.faculty as any)?.departments?.name ?? ""}</p>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell text-sm">{pub.authors ?? "—"}</TableCell>
-                          <TableCell className="max-w-xs">
-                            <p className="font-semibold text-sm line-clamp-2">{pub.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{pub.journal}</p>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm">{pub.year}</TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            <div className="flex flex-wrap gap-1">
-                              {pub.indexing?.map((k: string) => (
-                                <Badge key={k} variant="secondary" className="text-xs">{k}</Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button asChild size="sm" variant="default" className="gap-1 text-xs">
-                              <Link to={`/publications/${pub.id}`}><Eye className="h-3 w-3" /> View</Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </Card>
-              {renderPagination()}
-            </div>
-          )}
-        </div>
-
-        {/* Side Filter Panel */}
-        {showFilters && (
-          <div className="hidden md:block w-64 shrink-0">
-            <Card className="sticky top-6">
-              <CardContent className="p-4 space-y-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">Filters</h3>
-                  <button onClick={() => setShowFilters(false)}><X className="h-4 w-4 text-muted-foreground" /></button>
-                </div>
-
-                {/* Publication Type */}
-                <FilterSection title="Publication Type">
-                  {[{ key: "journal", label: "Journal" }, { key: "conference", label: "Conference" }].map((t) => (
-                    <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox checked={filterPubType.includes(t.key)} onCheckedChange={() => toggleFilter(setFilterPubType, t.key)} />
-                      {t.label}
-                    </label>
-                  ))}
-                </FilterSection>
-
-                {/* Year */}
-                <FilterSection title="Year">
-                  <div className="max-h-36 overflow-y-auto space-y-1.5">
-                    {years.map((y) => (
-                      <label key={y} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={filterYears.includes(y)} onCheckedChange={() => toggleFilter(setFilterYears, y)} />
-                        {y}
-                      </label>
-                    ))}
-                  </div>
-                </FilterSection>
-
-                {/* Department */}
-                <FilterSection title="Department">
-                  <div className="max-h-36 overflow-y-auto space-y-1.5">
-                    {departments?.map((d: any) => (
-                      <label key={d.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={filterDepartments.includes(d.id)} onCheckedChange={() => toggleFilter(setFilterDepartments, d.id)} />
-                        {d.code || d.name}
-                      </label>
-                    ))}
-                  </div>
-                </FilterSection>
-
-                {/* Scope */}
-                <FilterSection title="National / International">
-                  {["national", "international"].map((s) => (
-                    <label key={s} className="flex items-center gap-2 text-sm cursor-pointer capitalize">
-                      <Checkbox checked={filterScope.includes(s)} onCheckedChange={() => toggleFilter(setFilterScope, s)} />
-                      {s}
-                    </label>
-                  ))}
-                </FilterSection>
-
-                {/* Indexing */}
-                {allIndexTypes.length > 0 && (
-                  <FilterSection title="Indexing">
-                    {allIndexTypes.map((idx) => (
-                      <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <Checkbox checked={filterIndexing.includes(idx)} onCheckedChange={() => toggleFilter(setFilterIndexing, idx)} />
-                        {idx}
-                      </label>
-                    ))}
-                  </FilterSection>
-                )}
-
-                <div className="pt-2 space-y-2">
-                  <Button className="w-full" size="sm" onClick={() => setShowFilters(false)}>Apply Filters</Button>
-                  <button className="text-xs text-primary hover:underline w-full text-center" onClick={clearFilters}>Clear Filters</button>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1"><BookOpen className="h-3.5 w-3.5" />{stats.indexed} Indexed</span>
+            <span className="flex items-center gap-1"><Globe className="h-3.5 w-3.5" />{stats.international} Intl</span>
+            <span className="flex items-center gap-1"><Flag className="h-3.5 w-3.5" />{stats.national} Natl</span>
           </div>
-        )}
+          <Select value={sortYear} onValueChange={setSortYear}>
+            <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Newest First</SelectItem>
+              <SelectItem value="asc">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Main layout: Left sidebar + right content */}
+      <div className="flex gap-6 items-start">
+        {/* Left Sidebar Filter Panel */}
+        <div className="hidden lg:block w-60 shrink-0 sticky top-4">
+          <div className="rounded-2xl border shadow-sm bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
+              <h3 className="font-semibold text-sm">Filters</h3>
+              {activeFilterCount > 0 && (
+                <button onClick={clearFilters} className="text-xs text-primary hover:underline">
+                  Clear ({activeFilterCount})
+                </button>
+              )}
+            </div>
+
+            <div className="p-4 space-y-5">
+              {/* Search */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Search</p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Title / Faculty..."
+                    className="pl-7 h-8 text-xs"
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  />
+                </div>
+              </div>
+
+              {/* Type */}
+              <SidebarSection title="Type">
+                {[{ key: "journal", label: "Journal" }, { key: "conference", label: "Conference" }].map((t) => (
+                  <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={filterPubType.includes(t.key)} onCheckedChange={() => toggleFilter(setFilterPubType, t.key)} />
+                    {t.label}
+                  </label>
+                ))}
+              </SidebarSection>
+
+              {/* Department */}
+              <SidebarSection title="Department">
+                <div className="max-h-40 overflow-y-auto space-y-1.5">
+                  {DEPT_OPTIONS.map((d) => (
+                    <label key={d} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={filterDepartments.includes(d)} onCheckedChange={() => toggleFilter(setFilterDepartments, d)} />
+                      {d}
+                    </label>
+                  ))}
+                </div>
+              </SidebarSection>
+
+              {/* Year */}
+              <SidebarSection title="Year">
+                <div className="max-h-40 overflow-y-auto space-y-1.5">
+                  {years.map((y) => (
+                    <label key={y} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox checked={filterYears.includes(y)} onCheckedChange={() => toggleFilter(setFilterYears, y)} />
+                      {y}
+                    </label>
+                  ))}
+                </div>
+              </SidebarSection>
+
+              {/* Indexing */}
+              <SidebarSection title="Indexing">
+                {INDEXING_OPTIONS.map((idx) => (
+                  <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={filterIndexing.includes(idx)} onCheckedChange={() => toggleFilter(setFilterIndexing, idx)} />
+                    {idx}
+                  </label>
+                ))}
+              </SidebarSection>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Content */}
+        <div className="flex-1 min-w-0 space-y-3">
+          {isLoading && (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-28 rounded-xl animate-pulse bg-muted" />
+              ))}
+            </div>
+          )}
+          {!isLoading && paginated.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">No publications found</div>
+          )}
+
+          <AnimatePresence mode="wait">
+            {!isLoading && paginated.length > 0 && (
+              <motion.div
+                key={`${activeTab}-${page}-${search}-${sortYear}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-3"
+              >
+                {paginated.map((pub: any, idx: number) => (
+                  <PublicationItem
+                    key={pub.id}
+                    pub={pub}
+                    index={(page - 1) * ITEMS_PER_PAGE + idx + 1}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1 py-4">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              </Button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((p) => (
+                <Button key={p} variant={page === p ? "default" : "outline"} size="icon" className="h-8 w-8 text-xs" onClick={() => setPage(p)}>
+                  {p}
+                </Button>
+              ))}
+              {totalPages > 7 && <span className="px-2 text-muted-foreground">...</span>}
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+function PublicationItem({ pub, index }: { pub: any; index: number }) {
+  return (
+    <div className="rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow p-5">
+      <div className="flex items-start gap-4">
+        <span className="text-muted-foreground text-sm font-medium w-6 shrink-0">{index}.</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm leading-snug text-foreground">{pub.title}</p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1.5 mt-3 text-xs">
+            <div>
+              <span className="text-muted-foreground">Faculty</span>
+              <p className="font-medium text-foreground">{pub.faculty?.name ?? "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Authors</span>
+              <p className="font-medium text-foreground line-clamp-1">{pub.authors ?? "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">{pub.journal ? "Journal" : "Conference"}</span>
+              <p className="font-medium text-foreground line-clamp-1">{pub.journal || pub.conference || "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Department</span>
+              <p className="font-medium text-foreground">{pub.faculty?.department ?? "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Type</span>
+              <p className="font-medium text-foreground capitalize">{pub.pub_type ?? "—"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Year</span>
+              <p className="font-medium text-foreground">{pub.year ?? "—"}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center flex-wrap gap-2 mt-3">
+            {pub.indexing?.map((tag: string) => (
+              <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+            ))}
+            {pub.doi && (
+              <a
+                href={`https://doi.org/${pub.doi}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" /> DOI
+              </a>
+            )}
+          </div>
+        </div>
+
+        <Button asChild size="sm" variant="default" className="shrink-0 gap-1 text-xs">
+          <Link to={`/publications/${pub.id}`}><Eye className="h-3 w-3" /> View Details</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
       <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">{title}</p>
