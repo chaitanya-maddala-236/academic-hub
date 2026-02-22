@@ -115,6 +115,83 @@ export interface ProjectStatsResponse {
   };
 }
 
+// ─── Research API (merged Publications + Projects) ───────────────────────────
+
+export interface ResearchItem {
+  recordType: 'publication' | 'project';
+  id: number;
+  title: string;
+  department?: string | null;
+  year?: number | null;
+  // Publication fields
+  authors?: string | null;
+  journal?: string | null;
+  publicationType?: string | null;
+  indexing?: string[];
+  doi?: string | null;
+  abstract?: string | null;
+  scope?: string | null;
+  facultyName?: string | null;
+  pdfUrl?: string | null;
+  // Project fields
+  agency?: string | null;
+  pi?: string | null;
+  coPi?: string | null;
+  amount?: number | null;
+  status?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  outcomes?: string | null;
+  deliverables?: string | null;
+  teamMembers?: { name?: string; role?: string }[] | null;
+  createdAt?: string | null;
+}
+
+export interface ResearchListParams {
+  type?: 'all' | 'publication' | 'project';
+  department?: string;
+  year?: number | string;
+  status?: string;
+  indexing?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ResearchListResponse {
+  success: boolean;
+  data: ResearchItem[];
+  meta: { page: number; limit: number; total: number };
+}
+
+export interface ResearchStatsResponse {
+  success: boolean;
+  data: {
+    totalPublications: number;
+    indexedPublications: number;
+    totalProjects: number;
+    activeProjects: number;
+    departments: number;
+  };
+}
+
+export const researchApi = {
+  getResearch: (params?: ResearchListParams): Promise<ResearchListResponse> => {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined && v !== '')
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : '';
+    return axiosInstance.get(`/research${qs ? '?' + qs : ''}`) as unknown as Promise<ResearchListResponse>;
+  },
+  getResearchStats: (): Promise<ResearchStatsResponse> =>
+    axiosInstance.get('/research/stats') as unknown as Promise<ResearchStatsResponse>,
+};
+
 export const projectsApi = {
   getProjects: (params?: ProjectListParams): Promise<ProjectListResponse> => {
     const qs = params
