@@ -59,7 +59,9 @@ export default function PublicationDetail() {
         <span>/</span>
         <Link to="/publications" className="hover:text-foreground transition-colors">Publications</Link>
         <span>/</span>
-        <span className="text-foreground font-medium line-clamp-1 max-w-xs">Detail</span>
+        <span className="text-foreground font-medium line-clamp-1 max-w-xs">
+          {pub.title?.length > 50 ? `${pub.title.slice(0, 50)}…` : pub.title ?? "Detail"}
+        </span>
       </nav>
 
       {/* Back link */}

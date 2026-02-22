@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -117,18 +117,18 @@ export default function Projects() {
   const { hasRole } = useAuth();
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debounceRef = useCallback((() => {
-    let timer: ReturnType<typeof setTimeout>;
-    return (value: string) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setDebouncedSearch(value), 500);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  })(), []);
+  }, []);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
-    debounceRef(value);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedSearch(value), 500);
     setPage(1);
     const next = new URLSearchParams(searchParams);
     if (value) next.set("q", value); else next.delete("q");
@@ -319,9 +319,9 @@ export default function Projects() {
             <ChevronLeft size={16} />
           </button>
           {(() => {
-            const win = 2;
-            const start = Math.max(1, Math.min(page - win, totalPages - win * 2));
-            const end = Math.min(totalPages, start + win * 2);
+            const pageWindow = 2;
+            const start = Math.max(1, Math.min(page - pageWindow, totalPages - pageWindow * 2));
+            const end = Math.min(totalPages, start + pageWindow * 2);
             return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
               <button
                 key={p}

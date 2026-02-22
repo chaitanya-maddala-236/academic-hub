@@ -78,7 +78,7 @@ export default function Publications() {
       journals: publications.filter((p: any) => p.journal).length,
       conferences: publications.filter((p: any) => p.conference).length,
       international: publications.filter((p: any) => p.pub_type === "international").length,
-      national: publications.filter((p: any) => p.pub_type !== "international").length,
+      national: publications.filter((p: any) => p.pub_type === "national").length,
       indexed: publications.filter((p: any) => p.indexing && p.indexing.length > 0).length,
     };
   }, [publications]);

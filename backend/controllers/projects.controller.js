@@ -39,7 +39,7 @@ const getAllProjects = async (req, res, next) => {
 
     if (department) {
       conditions.push(`department ILIKE $${idx++}`);
-      params.push(department);
+      params.push(`%${department}%`);
     }
 
     if (funding) {
