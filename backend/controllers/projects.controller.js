@@ -8,6 +8,10 @@ const getAllProjects = async (req, res, next) => {
       limit = 10,
       search = '',
       status,
+      department,
+      funding,
+      year,
+      minBudget,
       sort = 'newest',
     } = req.query;
 
@@ -31,6 +35,26 @@ const getAllProjects = async (req, res, next) => {
     if (status && (status === 'ONGOING' || status === 'COMPLETED')) {
       conditions.push(`status = $${idx++}`);
       params.push(status);
+    }
+
+    if (department) {
+      conditions.push(`department ILIKE $${idx++}`);
+      params.push(`%${department}%`);
+    }
+
+    if (funding) {
+      conditions.push(`funding_agency ILIKE $${idx++}`);
+      params.push(`%${funding}%`);
+    }
+
+    if (year) {
+      conditions.push(`EXTRACT(YEAR FROM sanction_date)::int = $${idx++}`);
+      params.push(parseInt(year));
+    }
+
+    if (minBudget) {
+      conditions.push(`amount_lakhs >= $${idx++}`);
+      params.push(parseFloat(minBudget));
     }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

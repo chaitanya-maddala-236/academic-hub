@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, Pencil, Users, Target, CheckSquare, TrendingUp, Paperclip,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface TeamMember {
   name?: string;
@@ -109,7 +110,12 @@ export default function ProjectDetail() {
   const attachmentList: ProjectAttachment[] = Array.isArray(project.attachments) ? project.attachments : [];
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <motion.div
+      className="space-y-6 max-w-4xl"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+    >
       {/* Back */}
       <Link to="/projects" className="inline-flex items-center gap-1 text-sm no-underline" style={{ color: "#6B7280" }}>
         <ArrowLeft size={15} /> Back to Projects
@@ -266,6 +272,6 @@ export default function ProjectDetail() {
           </div>
         </SectionCard>
       )}
-    </div>
+    </motion.div>
   );
 }
