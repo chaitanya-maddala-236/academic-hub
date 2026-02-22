@@ -6,7 +6,7 @@ require('dotenv').config();
 const prisma = require('./src/lib/prisma');
 const errorHandler = require('./middleware/error.middleware');
 const { apiLimiter } = require('./middleware/rateLimiter.middleware');
-
+const pool = require('./config/db');
 // Import routes
 const authRoutes = require('./routes/auth.routes');
 const facultyRoutes = require('./routes/faculty.routes');
@@ -34,6 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Apply rate limiting to all API routes
 app.use('/api', apiLimiter);
+
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -67,6 +68,25 @@ app.use('/api/analytics', analyticsRoutes);
 const v1Routes = require('./src/routes/index');
 app.use('/api/v1', v1Routes);
 
+// test
+app.get("/api/check-projects", async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM "researchProject" LIMIT 5'
+    );
+    res.json({
+      success: true,
+      count: result.rowCount,
+      data: result.rows,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+// test
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

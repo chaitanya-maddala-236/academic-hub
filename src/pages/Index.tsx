@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import axiosInstance from "@/services/api";
+import axiosInstance, { api } from "@/services/api";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -9,6 +9,7 @@ import {
   FolderKanban, Activity, CheckCircle, DollarSign, Users, Building2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 
 const COLORS = ["#16A34A", "#6B7280", "#F59E0B", "#2563EB", "#7C3AED"];
 
@@ -65,6 +66,8 @@ function SectionCard({ title, children }: { title: string; children: React.React
 }
 
 export default function Index() {
+
+  
   const { data: statsResp, isLoading: statsLoading } = useQuery({
     queryKey: ["v1-dashboard"],
     queryFn: () => axiosInstance.get<unknown, { success: boolean; data: DashboardStats }>("/projects/dashboard"),
