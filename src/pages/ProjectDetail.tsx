@@ -6,6 +6,16 @@ import {
   ArrowLeft, Pencil, Users, Target, CheckSquare, TrendingUp, Paperclip,
 } from "lucide-react";
 
+interface TeamMember {
+  name?: string;
+  role?: string;
+}
+
+interface ProjectAttachment {
+  name?: string;
+  url?: string;
+}
+
 interface Project {
   id: number;
   title: string;
@@ -19,10 +29,10 @@ interface Project {
   endDate?: string;
   principalInvestigator?: string;
   coPrincipalInvestigator?: string;
-  teamMembers?: unknown;
+  teamMembers?: TeamMember[] | null;
   deliverables?: string;
   outcomes?: string;
-  attachments?: unknown;
+  attachments?: ProjectAttachment[] | null;
   status?: string;
 }
 
@@ -95,8 +105,8 @@ export default function ProjectDetail() {
     );
   }
 
-  const teamList = Array.isArray(project.teamMembers) ? project.teamMembers as { name?: string; role?: string }[] : [];
-  const attachmentList = Array.isArray(project.attachments) ? project.attachments as { name?: string; url?: string }[] : [];
+  const teamList: TeamMember[] = Array.isArray(project.teamMembers) ? project.teamMembers : [];
+  const attachmentList: ProjectAttachment[] = Array.isArray(project.attachments) ? project.attachments : [];
 
   return (
     <div className="space-y-6 max-w-4xl">

@@ -234,9 +234,11 @@ export default function Projects() {
           >
             <ChevronLeft size={16} />
           </button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const p = i + 1;
-            return (
+          {(() => {
+            const window = 2;
+            const start = Math.max(1, Math.min(page - window, totalPages - window * 2));
+            const end = Math.min(totalPages, start + window * 2);
+            return Array.from({ length: end - start + 1 }, (_, i) => start + i).map((p) => (
               <button
                 key={p}
                 onClick={() => setPage(p)}
@@ -249,8 +251,8 @@ export default function Projects() {
               >
                 {p}
               </button>
-            );
-          })}
+            ));
+          })()}
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}

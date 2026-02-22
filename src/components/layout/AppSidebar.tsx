@@ -68,6 +68,7 @@ export function AppSidebar() {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="ml-auto text-white opacity-60 hover:opacity-100"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? "→" : "←"}
         </button>

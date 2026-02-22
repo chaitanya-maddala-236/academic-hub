@@ -89,7 +89,7 @@ export default function Index() {
     { title: "Total Projects", value: stats.total, icon: FolderKanban, color: "#2563EB", bg: "#DBEAFE" },
     { title: "Ongoing Projects", value: stats.ongoing, icon: Activity, color: "#16A34A", bg: "#DCFCE7" },
     { title: "Completed Projects", value: stats.completed, icon: CheckCircle, color: "#6B7280", bg: "#F3F4F6" },
-    { title: "Total Funding (₹)", value: `₹${(stats.totalFunding / 1e5).toFixed(1)}L`, icon: DollarSign, color: "#F59E0B", bg: "#FEF3C7" },
+    { title: "Total Funding (₹)", value: stats.totalFunding > 0 ? `₹${(stats.totalFunding / 100000).toFixed(1)}L` : "₹0", icon: DollarSign, color: "#F59E0B", bg: "#FEF3C7" },
     { title: "Total Faculty", value: stats.topFaculty?.length ?? 0, icon: Users, color: "#7C3AED", bg: "#EDE9FE" },
     { title: "Total Agencies", value: stats.uniqueAgencies, icon: Building2, color: "#0891B2", bg: "#CFFAFE" },
   ];

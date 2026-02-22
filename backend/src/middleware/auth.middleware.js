@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 
-if (!process.env.JWT_SECRET) {
-  console.warn('WARNING: JWT_SECRET environment variable is not set. Authentication will be insecure.');
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set. Refusing to start authentication middleware.');
+  process.exit(1);
 }
 
 const verifyToken = (req, res, next) => {
@@ -10,12 +12,8 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ success: false, message: 'No token provided' });
   }
   const token = authHeader.split(' ')[1];
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return res.status(500).json({ success: false, message: 'Server misconfiguration' });
-  }
   try {
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch {
