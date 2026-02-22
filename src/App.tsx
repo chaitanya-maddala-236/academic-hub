@@ -24,9 +24,8 @@ import FundedProjects from "./pages/FundedProjects";
 import ResearchLabs from "./pages/ResearchLabs";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ResearchProjectsDashboard from "./pages/ResearchProjectsDashboard";
-import ResearchDashboard from "./pages/ResearchDashboard";
 import ResearchDetail from "./pages/ResearchDetail";
+import ResearchPage from "./features/research/pages/ResearchPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,8 +62,7 @@ const App = () => (
                     <Route path="/ip-assets" element={<IPAssets />} />
                     <Route path="/funded-projects" element={<FundedProjects />} />
                     <Route path="/research-labs" element={<ResearchLabs />} />
-                    <Route path="/research-dashboard" element={<ResearchProjectsDashboard />} />
-                    <Route path="/research" element={<ResearchDashboard />} />
+                    <Route path="/research" element={<ResearchPage />} />
                     <Route path="/research/:type/:id" element={<ResearchDetail />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>

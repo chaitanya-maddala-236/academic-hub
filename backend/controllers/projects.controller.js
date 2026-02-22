@@ -1,112 +1,75 @@
-const prisma = require('../src/lib/prisma');
+const pool = require('../config/db');
 
-// Helper function to calculate project status
-const calculateProjectStatus = (startDate, endDate) => {
-  if (!startDate || !endDate) return 'upcoming';
-  const now = new Date();
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (now < start) {
-    return 'upcoming';
-  } else if (now > end) {
-    return 'completed';
-  } else {
-    return 'ongoing';
-  }
-};
-
-// Get all projects with filters and pagination
+// Get all projects with search, filter, sort, and pagination
 const getAllProjects = async (req, res, next) => {
   try {
-    const { status, department, funding_agency, year, search, funded, page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      status,
+      sort = 'newest',
+    } = req.query;
 
-    const where = {};
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const offset = (pageNum - 1) * limitNum;
 
-    if (department) where.department = department;
-    if (funding_agency) where.fundingAgency = funding_agency;
-    if (year) {
-      where.startDate = {
-        gte: new Date(`${year}-01-01`),
-        lte: new Date(`${year}-12-31`),
-      };
-    }
+    const params = [];
+    let idx = 1;
+    const conditions = [];
+
     if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { principalInvestigator: { contains: search, mode: 'insensitive' } },
-        { fundingAgency: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-    if (funded === 'true') {
-      where.fundingAgency = { not: null };
+      const escaped = search.replace(/[%_\\]/g, '\\$&');
+      conditions.push(`(title ILIKE $${idx} OR principal_investigator ILIKE $${idx} OR funding_agency ILIKE $${idx} OR department ILIKE $${idx})`);
+      params.push(`%${escaped}%`);
+      idx++;
     }
 
-    let projects;
-    let total;
-
-    if (status) {
-      // Fetch all to filter by computed status
-      const all = await prisma.researchProject.findMany({
-        where,
-        orderBy: { startDate: 'desc' },
-      });
-      const filtered = all.filter(p => calculateProjectStatus(p.startDate, p.endDate) === status);
-      total = filtered.length;
-      projects = filtered.slice(skip, skip + parseInt(limit));
-    } else {
-      [projects, total] = await Promise.all([
-        prisma.researchProject.findMany({
-          where,
-          skip: parseInt(skip),
-          take: parseInt(limit),
-          orderBy: { startDate: 'desc' },
-        }),
-        prisma.researchProject.count({ where }),
-      ]);
+    if (status && (status === 'ONGOING' || status === 'COMPLETED')) {
+      conditions.push(`status = $${idx++}`);
+      params.push(status);
     }
 
-    const projectsWithStatus = projects.map(project => ({
-      ...project,
-      status: calculateProjectStatus(project.startDate, project.endDate),
-    }));
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const order = sort === 'oldest' ? 'ORDER BY sanction_date ASC NULLS LAST' : 'ORDER BY sanction_date DESC NULLS LAST';
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM "researchProject" ${where}`,
+      params
+    );
+    const total = countResult.rows[0].total;
+
+    const dataResult = await pool.query(
+      `SELECT * FROM "researchProject" ${where} ${order} LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, limitNum, offset]
+    );
 
     res.json({
-      success: true,
-      data: projectsWithStatus,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit),
-      },
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      data: dataResult.rows,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get single project
+// Get single project by ID
 const getProjectById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const result = await pool.query(
+      `SELECT * FROM "researchProject" WHERE id = $1`,
+      [parseInt(id)]
+    );
 
-    const project = await prisma.researchProject.findFirst({
-      where: { id: parseInt(id) },
-    });
-
-    if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: 'Project not found',
-      });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    res.json({
-      success: true,
-      data: { ...project, status: calculateProjectStatus(project.startDate, project.endDate) },
-    });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
@@ -118,123 +81,97 @@ const createProject = async (req, res, next) => {
     const {
       title,
       principal_investigator,
-      co_principal_investigator,
+      co_investigators,
       department,
       funding_agency,
-      agency_scientist,
-      file_number,
-      sanctioned_amount,
-      funds_per_year,
-      start_date,
-      end_date,
-      objectives,
-      deliverables,
-      outcomes,
-      team,
-      pdf_url,
+      sanction_date,
+      amount_lakhs,
+      duration,
+      status,
     } = req.body;
 
-    const project = await prisma.researchProject.create({
-      data: {
-        title,
-        principalInvestigator: principal_investigator,
-        coPrincipalInvestigator: co_principal_investigator,
-        department,
-        fundingAgency: funding_agency,
-        agencyScientist: agency_scientist,
-        fileNumber: file_number,
-        sanctionedAmount: sanctioned_amount ? parseFloat(sanctioned_amount) : null,
-        startDate: start_date ? new Date(start_date) : null,
-        endDate: end_date ? new Date(end_date) : null,
-        deliverables,
-        outcomes,
-        attachments: pdf_url ? { pdf_url } : null,
-        createdBy: req.user?.id || null,
-      },
-    });
+    if (!title || !principal_investigator || !amount_lakhs || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'title, principal_investigator, amount_lakhs and status are required',
+      });
+    }
 
-    res.status(201).json({
-      success: true,
-      message: 'Project created successfully',
-      data: { ...project, status: calculateProjectStatus(project.startDate, project.endDate) },
-    });
+    if (status !== 'ONGOING' && status !== 'COMPLETED') {
+      return res.status(400).json({ success: false, message: 'status must be ONGOING or COMPLETED' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO "researchProject"
+         (title, principal_investigator, co_investigators, department, funding_agency,
+          sanction_date, amount_lakhs, duration, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [title, principal_investigator, co_investigators || null, department || null,
+       funding_agency || null, sanction_date || null, parseFloat(amount_lakhs),
+       duration || null, status]
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
 };
 
-// Update project
+// Update project (only provided fields)
 const updateProject = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {
-      title,
-      principal_investigator,
-      co_principal_investigator,
-      department,
-      funding_agency,
-      agency_scientist,
-      file_number,
-      sanctioned_amount,
-      funds_per_year,
-      start_date,
-      end_date,
-      objectives,
-      deliverables,
-      outcomes,
-      team,
-      pdf_url,
-    } = req.body;
 
-    const existing = await prisma.researchProject.findFirst({ where: { id: parseInt(id) } });
-    if (!existing) {
+    const check = await pool.query(`SELECT id FROM "researchProject" WHERE id = $1`, [parseInt(id)]);
+    if (check.rowCount === 0) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const project = await prisma.researchProject.update({
-      where: { id: parseInt(id) },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(principal_investigator !== undefined && { principalInvestigator: principal_investigator }),
-        ...(co_principal_investigator !== undefined && { coPrincipalInvestigator: co_principal_investigator }),
-        ...(department !== undefined && { department }),
-        ...(funding_agency !== undefined && { fundingAgency: funding_agency }),
-        ...(agency_scientist !== undefined && { agencyScientist: agency_scientist }),
-        ...(file_number !== undefined && { fileNumber: file_number }),
-        ...(sanctioned_amount !== undefined && { sanctionedAmount: parseFloat(sanctioned_amount) }),
-        ...(start_date !== undefined && { startDate: new Date(start_date) }),
-        ...(end_date !== undefined && { endDate: new Date(end_date) }),
-        ...(deliverables !== undefined && { deliverables }),
-        ...(outcomes !== undefined && { outcomes }),
-      },
-    });
+    const allowed = ['title', 'principal_investigator', 'co_investigators', 'department',
+                     'funding_agency', 'sanction_date', 'amount_lakhs', 'duration', 'status'];
+    const setClauses = [];
+    const params = [];
+    let idx = 1;
 
-    res.json({
-      success: true,
-      message: 'Project updated successfully',
-      data: { ...project, status: calculateProjectStatus(project.startDate, project.endDate) },
-    });
+    for (const field of allowed) {
+      if (req.body[field] !== undefined) {
+        if (field === 'status' && req.body[field] !== 'ONGOING' && req.body[field] !== 'COMPLETED') {
+          return res.status(400).json({ success: false, message: 'status must be ONGOING or COMPLETED' });
+        }
+        setClauses.push(`${field} = $${idx++}`);
+        params.push(req.body[field]);
+      }
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid fields provided for update' });
+    }
+
+    params.push(parseInt(id));
+    const result = await pool.query(
+      `UPDATE "researchProject" SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING *`,
+      params
+    );
+
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     next(error);
   }
 };
 
-// Delete project
+// Delete project by ID
 const deleteProject = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const existing = await prisma.researchProject.findFirst({ where: { id: parseInt(id) } });
-    if (!existing) {
+    const check = await pool.query(`SELECT id FROM "researchProject" WHERE id = $1`, [parseInt(id)]);
+    if (check.rowCount === 0) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    await prisma.researchProject.delete({ where: { id: parseInt(id) } });
-
-    res.json({
-      success: true,
-      message: 'Project deleted successfully',
-    });
+    await pool.query(`DELETE FROM "researchProject" WHERE id = $1`, [parseInt(id)]);
+    res.json({ success: true, message: 'Project deleted successfully' });
   } catch (error) {
     next(error);
   }
