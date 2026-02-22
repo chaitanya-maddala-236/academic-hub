@@ -189,10 +189,41 @@ const getDepartmentComparison = async (req, res, next) => {
   }
 };
 
+// GET /api/dashboard/stats — research project statistics
+const getResearchProjectStats = async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*)::int                                                                              AS "totalProjects",
+        COALESCE(SUM(amount_lakhs), 0)::float                                                     AS "totalFunding",
+        COUNT(*) FILTER (WHERE status = 'ONGOING')::int                                           AS "activeProjects",
+        COUNT(*) FILTER (WHERE status = 'COMPLETED')::int                                         AS "completedProjects",
+        COUNT(DISTINCT funding_agency)
+          FILTER (WHERE funding_agency IS NOT NULL AND funding_agency <> '')::int                  AS "fundingAgencyCount",
+        COUNT(DISTINCT principal_investigator)
+          FILTER (WHERE principal_investigator IS NOT NULL AND principal_investigator <> '')::int   AS "facultyCount"
+      FROM "researchProject"
+    `);
+
+    const row = result.rows[0];
+    res.json({
+      totalProjects: row.totalProjects,
+      totalFunding: row.totalFunding,
+      activeProjects: row.activeProjects,
+      completedProjects: row.completedProjects,
+      fundingAgencyCount: row.fundingAgencyCount,
+      facultyCount: row.facultyCount,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getPublicationsPerYear,
   getPatentGrowth,
   getConsultancyRevenue,
-  getDepartmentComparison
+  getDepartmentComparison,
+  getResearchProjectStats,
 };

@@ -20,6 +20,7 @@ const materialsRoutes = require('./routes/materials.routes');
 const awardsRoutes = require('./routes/awards.routes');
 const studentProjectsRoutes = require('./routes/studentProjects.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -63,6 +64,7 @@ app.use('/api/materials', materialsRoutes);
 app.use('/api/awards', awardsRoutes);
 app.use('/api/student-projects', studentProjectsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // NEW: /api/v1 routes (Prisma-based)
 const v1Routes = require('./src/routes/index');

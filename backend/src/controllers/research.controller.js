@@ -1,14 +1,4 @@
 const pool = require('../../config/db');
-const prisma = require('../lib/prisma');
-
-// Helper: compute project status from dates
-const computeStatus = (project) => {
-  if (!project.startDate || !project.endDate) return 'upcoming';
-  const now = new Date();
-  if (now < new Date(project.startDate)) return 'upcoming';
-  if (now > new Date(project.endDate)) return 'completed';
-  return 'ongoing';
-};
 
 /**
  * GET /api/v1/research
@@ -30,8 +20,7 @@ const getResearch = async (req, res, next) => {
 
     const items = [];
 
-    // ── Fetch publications (legacy pool) ────────────────────────────────────
-    // TODO: Replace with Prisma/MongoDB once publications are migrated
+    // ── Fetch publications (pg Pool) ─────────────────────────────────────────
     if (type === 'all' || type === 'publication') {
       let query = `
         SELECT p.id, p.title, p.authors, p.journal_name, p.publication_type,
@@ -80,52 +69,47 @@ const getResearch = async (req, res, next) => {
       });
     }
 
-    // ── Fetch projects (Prisma) ──────────────────────────────────────────────
-    // TODO: Replace with MongoDB/Prisma once fully migrated
+    // ── Fetch projects (pg Pool — "researchProject" table) ───────────────────
     if (type === 'all' || type === 'project') {
-      const where = { isDeleted: false };
-      if (department) where.department = department;
-      if (year) {
-        where.startDate = {
-          gte: new Date(`${year}-01-01`),
-          lte: new Date(`${year}-12-31`),
-        };
+      let query = `
+        SELECT id, title, department, funding_agency, sanction_date,
+               amount_lakhs, principal_investigator, co_investigators,
+               duration, status, created_at
+        FROM "researchProject"
+        WHERE 1=1
+      `;
+      const params = [];
+      let idx = 1;
+
+      if (department) { query += ` AND department = $${idx++}`; params.push(department); }
+      if (year) { query += ` AND EXTRACT(YEAR FROM sanction_date) = $${idx++}`; params.push(Number(year)); }
+      if (status) {
+        query += ` AND status = $${idx++}`;
+        params.push(status.toUpperCase());
       }
       if (search) {
-        where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { principalInvestigator: { contains: search, mode: 'insensitive' } },
-          { fundingAgency: { contains: search, mode: 'insensitive' } },
-          { department: { contains: search, mode: 'insensitive' } },
-        ];
+        const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
+        query += ` AND (title ILIKE $${idx} OR principal_investigator ILIKE $${idx} OR funding_agency ILIKE $${idx} OR department ILIKE $${idx})`;
+        params.push(`%${escapedSearch}%`);
+        idx++;
       }
 
-      let projects = await prisma.researchProject.findMany({ where, orderBy: { createdAt: 'desc' } });
+      query += ` ORDER BY sanction_date DESC NULLS LAST, created_at DESC`;
 
-      projects = projects.map((p) => ({ ...p, status: computeStatus(p) }));
-
-      // Status filter applied after compute (status is derived, not stored)
-      if (status) projects = projects.filter((p) => p.status === status);
-
-      projects.forEach((p) => {
+      const result = await pool.query(query, params);
+      result.rows.forEach((p) => {
         items.push({
           recordType: 'project',
           id: p.id,
           title: p.title,
           department: p.department || null,
-          year: p.startDate ? new Date(p.startDate).getFullYear() : null,
-          agency: p.fundingAgency || null,
-          pi: p.principalInvestigator || null,
-          coPi: p.coPrincipalInvestigator || null,
-          amount: p.sanctionedAmount || null,
-          status: p.status,
-          startDate: p.startDate,
-          endDate: p.endDate,
-          abstract: p.abstract || null,
-          outcomes: p.outcomes || null,
-          deliverables: p.deliverables || null,
-          teamMembers: p.teamMembers || [],
-          createdAt: p.createdAt,
+          year: p.sanction_date ? new Date(p.sanction_date).getFullYear() : null,
+          agency: p.funding_agency || null,
+          pi: p.principal_investigator || null,
+          coPi: p.co_investigators || null,
+          amount: p.amount_lakhs ? Number(p.amount_lakhs) : null,
+          status: p.status ? p.status.toLowerCase() : null,
+          createdAt: p.created_at,
         });
       });
     }
@@ -158,8 +142,7 @@ const getResearch = async (req, res, next) => {
  */
 const getResearchStats = async (req, res, next) => {
   try {
-    // Publications stats (legacy pool)
-    // TODO: Replace with Prisma once publications are migrated
+    // Publications stats (pg Pool — publications table)
     const pubResult = await pool.query(`
       SELECT
         COUNT(*) as total,
@@ -169,38 +152,29 @@ const getResearchStats = async (req, res, next) => {
       LEFT JOIN faculty f ON p.faculty_id = f.id
     `);
     const pubRow = pubResult.rows[0];
-    const pubDepts= pubRow.pub_departments ?? [];
+    const pubDepts = pubRow.pub_departments ?? [];
 
-    // Projects stats (Prisma)
-    const [totalProjects, allProjects] = await Promise.all([
-      prisma.researchProject.count({ where: { isDeleted: false } }),
-      prisma.researchProject.findMany({
-        where: { isDeleted: false },
-        select: { startDate: true, endDate: true, department: true },
-      }),
-    ]);
-
-    const now = new Date();
-    let activeProjects = 0;
-    const deptSet = new Set();
-
-    allProjects.forEach((p) => {
-      if (p.startDate && p.endDate) {
-        if (now >= new Date(p.startDate) && now <= new Date(p.endDate)) activeProjects++;
-      }
-      if (p.department) deptSet.add(p.department);
-    });
+    // Projects stats (pg Pool — "researchProject" table)
+    const projResult = await pool.query(`
+      SELECT
+        COUNT(*)::int                                                           AS total_projects,
+        COUNT(*) FILTER (WHERE status = 'ONGOING')::int                        AS active_projects,
+        array_agg(DISTINCT department) FILTER (WHERE department IS NOT NULL)   AS proj_departments
+      FROM "researchProject"
+    `);
+    const projRow = projResult.rows[0];
+    const projDepts = projRow.proj_departments ?? [];
 
     // Union publication + project departments for accurate unique count
-    pubDepts.forEach((d) => deptSet.add(d));
+    const deptSet = new Set([...pubDepts, ...projDepts]);
 
     res.json({
       success: true,
       data: {
         totalPublications: Number(pubRow.total),
         indexedPublications: Number(pubRow.indexed),
-        totalProjects,
-        activeProjects,
+        totalProjects: projRow.total_projects,
+        activeProjects: projRow.active_projects,
         departments: deptSet.size,
       },
     });
