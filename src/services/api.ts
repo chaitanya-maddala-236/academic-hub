@@ -59,4 +59,79 @@ export const api = {
     axiosInstance.delete(endpoint) as unknown as Promise<T>,
 };
 
+// ─── Project API ─────────────────────────────────────────────────────────────
+
+export interface Project {
+  id: number;
+  title: string;
+  abstract?: string;
+  department?: string;
+  fundingAgency?: string;
+  agencyScientist?: string;
+  fileNumber?: string;
+  sanctionedAmount?: number;
+  startDate?: string;
+  endDate?: string;
+  principalInvestigator?: string;
+  coPrincipalInvestigator?: string;
+  teamMembers?: { name?: string; role?: string }[] | null;
+  deliverables?: string;
+  outcomes?: string;
+  attachments?: { name?: string; url?: string }[] | null;
+  status?: string;
+}
+
+export interface ProjectListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  department?: string;
+  status?: string;
+  agency?: string;
+  year?: string | number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ProjectListResponse {
+  success: boolean;
+  data: Project[];
+  meta: { page: number; limit: number; total: number };
+}
+
+export interface ProjectStatsResponse {
+  success: boolean;
+  data: {
+    total: number;
+    ongoing: number;
+    completed: number;
+    totalFunding: number;
+    uniqueAgencies: number;
+    uniqueFaculty: number;
+    topFaculty: { name: string; count: number }[];
+    projectsByYear: { year: number; count: number }[];
+    departmentChart: { department: string; count: number }[];
+    statusDistribution: { name: string; value: number; color: string }[];
+  };
+}
+
+export const projectsApi = {
+  getProjects: (params?: ProjectListParams): Promise<ProjectListResponse> => {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined && v !== '')
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : '';
+    return axiosInstance.get(`/projects${qs ? '?' + qs : ''}`) as unknown as Promise<ProjectListResponse>;
+  },
+  getProjectById: (id: number | string): Promise<{ success: boolean; data: Project }> =>
+    axiosInstance.get(`/projects/${id}`) as unknown as Promise<{ success: boolean; data: Project }>,
+  getProjectStats: (): Promise<ProjectStatsResponse> =>
+    axiosInstance.get('/projects/dashboard') as unknown as Promise<ProjectStatsResponse>,
+};
+
 export default axiosInstance;
