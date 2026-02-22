@@ -1,193 +1,244 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import axiosInstance from "@/services/api";
 import {
-  FolderOpen,
-  BookOpen,
-  Users,
-  ArrowRight,
-  ShieldCheck,
-  Lightbulb,
-  Plus,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+  LineChart, Line,
+} from "recharts";
+import {
+  FolderKanban, Activity, CheckCircle, DollarSign, Users, Building2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
-import { cn } from "@/lib/utils";
 
-const dashboardTabs = [
-  { key: "projects", label: "Project Access", icon: FolderOpen, color: "bg-primary text-primary-foreground" },
-  { key: "publications", label: "Publications", icon: BookOpen, color: "bg-emerald-600 text-white" },
-  { key: "patents", label: "Patents", icon: ShieldCheck, color: "bg-amber-600 text-white" },
-  { key: "ip-assets", label: "IP Assets", icon: Lightbulb, color: "bg-rose-600 text-white" },
-] as const;
+const COLORS = ["#16A34A", "#6B7280", "#F59E0B", "#2563EB", "#7C3AED"];
 
-type TabKey = (typeof dashboardTabs)[number]["key"];
+interface DashboardStats {
+  total: number;
+  ongoing: number;
+  completed: number;
+  totalFunding: number;
+  uniqueAgencies: number;
+  topFaculty: { name: string; count: number }[];
+  projectsByYear: { year: number; count: number }[];
+  departmentChart: { department: string; count: number }[];
+  statusDistribution: { name: string; value: number; color: string }[];
+}
+
+interface Project {
+  id: number;
+  title: string;
+  fundingAgency?: string;
+  department?: string;
+  status?: string;
+  startDate?: string;
+}
+
+function KpiCard({
+  title, value, icon: Icon, color, bg,
+}: { title: string; value: string | number; icon: React.ElementType; color: string; bg: string }) {
+  return (
+    <div
+      className="rounded-xl p-5 flex items-center gap-4"
+      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
+    >
+      <div className="rounded-xl p-3 shrink-0" style={{ backgroundColor: bg }}>
+        <Icon size={22} style={{ color }} />
+      </div>
+      <div>
+        <p className="text-2xl font-bold" style={{ color: "#111827" }}>{value}</p>
+        <p className="text-xs mt-0.5" style={{ color: "#6B7280" }}>{title}</p>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="rounded-xl p-6"
+      style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
+    >
+      <h3 className="font-semibold mb-4" style={{ color: "#111827" }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
 
 export default function Index() {
-  const [activeTab, setActiveTab] = useState<TabKey>("projects");
-
-  // Fetch stats from backend
-  const { data: projectsData } = useQuery({
-    queryKey: ["projects-count"],
-    queryFn: async () => {
-      const response = await api.get<any>("/projects?page=1&limit=1", false);
-      return response;
-    },
+  const { data: statsResp, isLoading: statsLoading } = useQuery({
+    queryKey: ["v1-dashboard"],
+    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: DashboardStats }>("/projects/dashboard"),
   });
 
-  const { data: publicationsData } = useQuery({
-    queryKey: ["publications-count"],
-    queryFn: async () => {
-      const response = await api.get<any>("/publications?page=1&limit=1", false);
-      return response;
-    },
+  const { data: recentResp } = useQuery({
+    queryKey: ["v1-recent-projects"],
+    queryFn: () =>
+      axiosInstance.get<unknown, { success: boolean; data: Project[]; meta: { total: number } }>(
+        "/projects?page=1&limit=5&sortBy=createdAt&sortOrder=desc"
+      ),
   });
 
-  const { data: patentsData } = useQuery({
-    queryKey: ["patents-count"],
-    queryFn: async () => {
-      const response = await api.get<any>("/patents?page=1&limit=1", false);
-      return response;
-    },
-  });
-
-  const { data: facultyData } = useQuery({
-    queryKey: ["faculty-count"],
-    queryFn: async () => {
-      const response = await api.get<any>("/faculty?page=1&limit=1", false);
-      return response;
-    },
-  });
-
-  const { data: recentProjects } = useQuery({
-    queryKey: ["recent-projects"],
-    queryFn: async () => {
-      const response = await api.get<any>("/projects?page=1&limit=5&sortBy=created_at&sortOrder=desc", false);
-      return response.data || [];
-    },
-  });
-
-  const { data: recentPublications } = useQuery({
-    queryKey: ["recent-publications"],
-    queryFn: async () => {
-      const response = await api.get<any>("/publications?page=1&limit=5&sortBy=created_at&sortOrder=desc", false);
-      return response.data || [];
-    },
-  });
-
-  const stats = {
-    projects: projectsData?.pagination?.total || 0,
-    publications: publicationsData?.pagination?.total || 0,
-    patents: patentsData?.pagination?.total || 0,
-    faculty: facultyData?.pagination?.total || 0,
+  const stats: DashboardStats = statsResp?.data ?? {
+    total: 0, ongoing: 0, completed: 0, totalFunding: 0, uniqueAgencies: 0,
+    topFaculty: [], projectsByYear: [], departmentChart: [], statusDistribution: [],
   };
 
-  const quickAccessCards = [
-    { label: "Publications This Year", value: stats.publications, icon: BookOpen, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Projects Submitted", value: stats.projects, icon: FolderOpen, color: "text-emerald-600", bg: "bg-emerald-100" },
-    { label: "Patents Filed", value: stats.patents, icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-100" },
-    { label: "IPs Registered", value: 0, icon: Lightbulb, color: "text-rose-600", bg: "bg-rose-100" },
+  const recentProjects: Project[] = recentResp?.data ?? [];
+
+  const kpis = [
+    { title: "Total Projects", value: stats.total, icon: FolderKanban, color: "#2563EB", bg: "#DBEAFE" },
+    { title: "Ongoing Projects", value: stats.ongoing, icon: Activity, color: "#16A34A", bg: "#DCFCE7" },
+    { title: "Completed Projects", value: stats.completed, icon: CheckCircle, color: "#6B7280", bg: "#F3F4F6" },
+    { title: "Total Funding (₹)", value: `₹${(stats.totalFunding / 1e5).toFixed(1)}L`, icon: DollarSign, color: "#F59E0B", bg: "#FEF3C7" },
+    { title: "Total Faculty", value: stats.topFaculty?.length ?? 0, icon: Users, color: "#7C3AED", bg: "#EDE9FE" },
+    { title: "Total Agencies", value: stats.uniqueAgencies, icon: Building2, color: "#0891B2", bg: "#CFFAFE" },
   ];
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {dashboardTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors",
-              activeTab === tab.key
-                ? tab.color
-                : "bg-muted text-muted-foreground hover:bg-accent"
-            )}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Quick Access */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-foreground">Quick Access</h2>
-          <Link to="/projects">
-            <Button size="sm" className="gap-1">
-              <Plus className="h-4 w-4" />
-              Add New Project
-            </Button>
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {quickAccessCards.map((card) => (
-            <Card key={card.label} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className={cn("p-2 rounded-lg", card.bg, card.color)}>
-                  <card.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-foreground">{card.value}</p>
-                  <p className="text-xs text-muted-foreground leading-tight">{card.label}</p>
-                </div>
-              </CardContent>
-            </Card>
+  if (statsLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="rounded-xl h-24 animate-pulse" style={{ backgroundColor: "#E5E7EB" }} />
           ))}
         </div>
       </div>
+    );
+  }
 
-      {/* Recent Additions */}
+  return (
+    <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-3">Recent Additions</h2>
-        <Card>
-          <CardContent className="p-0 divide-y">
-            {recentProjects?.map((p: any) => (
+        <h1 className="text-2xl font-bold" style={{ color: "#111827" }}>Dashboard</h1>
+        <p className="text-sm mt-1" style={{ color: "#6B7280" }}>Research Management Portal Overview</p>
+      </div>
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {kpis.map((k) => <KpiCard key={k.title} {...k} />)}
+      </div>
+
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SectionCard title="Projects by Department">
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={stats.departmentChart} margin={{ top: 0, right: 10, left: -20, bottom: 40 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="department" tick={{ fontSize: 11, fill: "#6B7280" }} angle={-35} textAnchor="end" interval={0} />
+              <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
+              <Tooltip />
+              <Bar dataKey="count" fill="#2563EB" radius={[4, 4, 0, 0]} name="Projects" />
+            </BarChart>
+          </ResponsiveContainer>
+        </SectionCard>
+
+        <SectionCard title="Status Distribution">
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={stats.statusDistribution.filter(s => s.value > 0)}
+                cx="50%" cy="50%" outerRadius={80}
+                dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
+              >
+                {stats.statusDistribution.map((entry, i) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Legend />
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      </div>
+
+      {/* Analytics Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SectionCard title="Projects by Year">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={stats.projectsByYear} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: "#6B7280" }} />
+              <YAxis tick={{ fontSize: 11, fill: "#6B7280" }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="count" stroke="#2563EB" strokeWidth={2} dot={{ fill: "#2563EB" }} name="Projects" />
+            </LineChart>
+          </ResponsiveContainer>
+        </SectionCard>
+
+        <SectionCard title="Top Faculty by Projects">
+          {stats.topFaculty.length === 0 ? (
+            <p className="text-sm py-8 text-center" style={{ color: "#6B7280" }}>No data available</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ borderBottom: "1px solid #E5E7EB" }}>
+                  <th className="text-left pb-2 font-medium" style={{ color: "#6B7280" }}>Faculty Name</th>
+                  <th className="text-right pb-2 font-medium" style={{ color: "#6B7280" }}>Projects</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.topFaculty.map((f, i) => (
+                  <tr key={f.name} style={{ borderBottom: "1px solid #F3F4F6" }}>
+                    <td className="py-2" style={{ color: "#111827" }}>
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium mr-2"
+                        style={{ backgroundColor: "#DBEAFE", color: "#2563EB" }}>
+                        {i + 1}
+                      </span>
+                      {f.name}
+                    </td>
+                    <td className="py-2 text-right font-semibold" style={{ color: "#2563EB" }}>{f.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* Recent Projects */}
+      <SectionCard title="Recent Projects">
+        {recentProjects.length === 0 ? (
+          <div className="text-center py-8">
+            <FolderKanban size={40} className="mx-auto mb-3" style={{ color: "#E5E7EB" }} />
+            <p className="text-sm" style={{ color: "#6B7280" }}>No projects yet. Add your first project.</p>
+            <Link
+              to="/projects"
+              className="inline-block mt-3 px-4 py-2 rounded-lg text-sm font-medium text-white no-underline"
+              style={{ backgroundColor: "#2563EB" }}
+            >
+              Go to Projects
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recentProjects.map((p) => (
               <Link
                 key={p.id}
                 to={`/projects/${p.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
+                className="block rounded-xl p-4 no-underline transition-shadow hover:shadow-md"
+                style={{ border: "1px solid #E5E7EB", backgroundColor: "#FAFAFA" }}
               >
-                <div className="p-2 rounded bg-primary/10">
-                  <FolderOpen className="h-4 w-4 text-primary" />
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-sm line-clamp-2" style={{ color: "#111827" }}>{p.title}</p>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: p.status === "ongoing" ? "#DCFCE7" : p.status === "completed" ? "#F3F4F6" : "#FEF3C7",
+                      color: p.status === "ongoing" ? "#16A34A" : p.status === "completed" ? "#6B7280" : "#F59E0B",
+                    }}
+                  >
+                    {p.status}
+                  </span>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-primary truncate">{p.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.agency} • {p.start_date ? new Date(p.start_date).getFullYear() : 'N/A'}
-                  </p>
-                </div>
+                <p className="text-xs mt-2" style={{ color: "#6B7280" }}>
+                  {p.department ?? "—"} · {p.fundingAgency ?? "—"}
+                </p>
               </Link>
             ))}
-            {recentPublications?.map((p: any) => (
-              <Link
-                key={p.id}
-                to={`/publications/${p.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors"
-              >
-                <div className="p-2 rounded bg-emerald-100">
-                  <BookOpen className="h-4 w-4 text-emerald-600" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-sm text-primary truncate">{p.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {p.authors} • {p.year || 'N/A'}
-                  </p>
-                </div>
-              </Link>
-            ))}
-            {(!recentProjects?.length && !recentPublications?.length) && (
-              <div className="px-4 py-8 text-center text-muted-foreground text-sm">
-                No recent additions yet
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }
