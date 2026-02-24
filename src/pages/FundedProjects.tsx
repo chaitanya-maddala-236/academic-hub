@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import axiosInstance from "@/services/api";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,22 +10,23 @@ import { Link } from "react-router-dom";
 export default function FundedProjects() {
   const [search, setSearch] = useState("");
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: resp, isLoading } = useQuery({
     queryKey: ["funded-projects"],
-    queryFn: async () => {
-      const response = await api.get<any>("/projects?funded=true&page=1&limit=1000", false);
-      return response.data ?? [];
-    },
+    queryFn: () =>
+      axiosInstance.get<unknown, { success: boolean; data: any[]; meta: { total: number } }>(
+        "/v1/projects?page=1&limit=1000&sortBy=sanctionDate&sortOrder=desc"
+      ),
   });
 
+  const projects = resp?.data ?? [];
+
   const filtered = useMemo(() => {
-    if (!projects) return [];
     if (!search) return projects;
     const s = search.toLowerCase();
     return projects.filter((p: any) =>
       p.title?.toLowerCase().includes(s) ||
-      p.principal_investigator?.toLowerCase().includes(s) ||
-      p.funding_agency?.toLowerCase().includes(s) ||
+      p.principalInvestigator?.toLowerCase().includes(s) ||
+      p.fundingAgency?.toLowerCase().includes(s) ||
       p.department?.toLowerCase().includes(s)
     );
   }, [projects, search]);
@@ -62,7 +63,7 @@ export default function FundedProjects() {
               <TableHead className="hidden md:table-cell">PI</TableHead>
               <TableHead className="hidden md:table-cell">Department</TableHead>
               <TableHead className="hidden lg:table-cell">Funding Agency</TableHead>
-              <TableHead className="hidden lg:table-cell">Amount (₹)</TableHead>
+              <TableHead className="hidden lg:table-cell">Amount (Lakhs ₹)</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -84,11 +85,11 @@ export default function FundedProjects() {
                     {project.title}
                   </Link>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{project.principal_investigator ?? "—"}</TableCell>
+                <TableCell className="hidden md:table-cell">{project.principalInvestigator ?? "—"}</TableCell>
                 <TableCell className="hidden md:table-cell">{project.department ?? "—"}</TableCell>
-                <TableCell className="hidden lg:table-cell">{project.funding_agency ?? "—"}</TableCell>
+                <TableCell className="hidden lg:table-cell">{project.fundingAgency ?? "—"}</TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  {project.sanctioned_amount ? project.sanctioned_amount.toLocaleString() : "—"}
+                  {project.amountLakhs != null ? `₹${Number(project.amountLakhs).toLocaleString()}` : "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant={
@@ -106,3 +107,4 @@ export default function FundedProjects() {
     </div>
   );
 }
+

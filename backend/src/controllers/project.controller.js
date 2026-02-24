@@ -15,10 +15,10 @@ const projectSchema = z.object({
 
 const getAll = async (req, res, next) => {
   try {
-    const { page = 1, limit = 12, department, status, agency, year, search, sortBy, sortOrder } = req.query;
+    const { page = 1, limit = 12, department, status, agency, year, search, minBudget, sortBy, sortOrder } = req.query;
     const result = await service.getAllProjects({
       page: Number(page), limit: Number(limit),
-      department, status, agency, year, search, sortBy, sortOrder,
+      department, status, agency, year, search, minBudget, sortBy, sortOrder,
     });
     res.json({
       success: true,

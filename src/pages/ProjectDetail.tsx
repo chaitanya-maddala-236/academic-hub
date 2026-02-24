@@ -81,7 +81,7 @@ export default function ProjectDetail() {
 
   const { data: resp, isLoading } = useQuery({
     queryKey: ["v1-project", id],
-    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: Project }>(`/projects/${id}`),
+    queryFn: () => axiosInstance.get<unknown, { success: boolean; data: Project }>(`/v1/projects/${id}`),
     enabled: !!id,
   });
 
