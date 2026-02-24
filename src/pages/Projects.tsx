@@ -73,13 +73,13 @@ function ProjectCard({ project }: { project: Project }) {
         {project.fundingAgency && (
           <p><span className="font-medium">Agency:</span> {project.fundingAgency}</p>
         )}
-        {project.amountLakhs && (
+        {project.amountLakhs != null && (
           <p><span className="font-medium">Budget:</span> ₹{Number(project.amountLakhs).toLocaleString()} L</p>
         )}
         {(project.sanctionDate || project.startDate) && (
           <p>
             <span className="font-medium">Sanctioned:</span>{" "}
-            {new Date(project.sanctionDate || project.startDate!).getFullYear()}
+            {new Date((project.sanctionDate || project.startDate) as string).getFullYear()}
           </p>
         )}
         {project.principalInvestigator && (
