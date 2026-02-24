@@ -6,13 +6,14 @@ const prisma = require('../lib/prisma');
  * Actual schema fields: title, principalInvestigator, coInvestigators,
  * department, fundingAgency, sanctionDate, amountLakhs, duration, status (enum: ONGOING | COMPLETED)
  */
-const findAll = async ({ page = 1, limit = 10, department, status, agency, year, search, sortBy = 'createdAt', sortOrder = 'desc' }) => {
+const findAll = async ({ page = 1, limit = 10, department, status, agency, year, search, minBudget, sortBy = 'createdAt', sortOrder = 'desc' }) => {
   const skip = (page - 1) * limit;
 
   const where = {};
 
   if (department) where.department = { contains: department, mode: 'insensitive' };
   if (agency) where.fundingAgency = { contains: agency, mode: 'insensitive' };
+  if (minBudget) where.amountLakhs = { gte: parseFloat(minBudget) };
   if (year) {
     where.sanctionDate = {
       gte: new Date(`${year}-01-01`),

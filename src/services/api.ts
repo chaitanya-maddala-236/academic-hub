@@ -204,12 +204,12 @@ export const projectsApi = {
           )
         ).toString()
       : '';
-    return axiosInstance.get(`/projects${qs ? '?' + qs : ''}`) as unknown as Promise<ProjectListResponse>;
+    return axiosInstance.get(`/v1/projects${qs ? '?' + qs : ''}`) as unknown as Promise<ProjectListResponse>;
   },
   getProjectById: (id: number | string): Promise<{ success: boolean; data: Project }> =>
-    axiosInstance.get(`/projects/${id}`) as unknown as Promise<{ success: boolean; data: Project }>,
+    axiosInstance.get(`/v1/projects/${id}`) as unknown as Promise<{ success: boolean; data: Project }>,
   getProjectStats: (): Promise<ProjectStatsResponse> =>
-    axiosInstance.get('/projects/dashboard') as unknown as Promise<ProjectStatsResponse>,
+    axiosInstance.get('/v1/projects/dashboard') as unknown as Promise<ProjectStatsResponse>,
 };
 
 export default axiosInstance;

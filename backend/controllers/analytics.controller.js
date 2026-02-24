@@ -1,12 +1,12 @@
 const pool = require('../config/db');
 
-// Get projects grouped by department
+// Get projects grouped by department (from researchProject table)
 const getProjectsByDepartment = async (req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT department, COUNT(*) AS count
-      FROM funded_projects
-      WHERE department IS NOT NULL
+      FROM "researchProject"
+      WHERE department IS NOT NULL AND department <> ''
       GROUP BY department
       ORDER BY count DESC
     `);
@@ -23,15 +23,15 @@ const getProjectsByDepartment = async (req, res, next) => {
   }
 };
 
-// Get funding trend grouped by year
+// Get funding trend grouped by year (from researchProject table)
 const getFundingTrend = async (req, res, next) => {
   try {
     const result = await pool.query(`
-      SELECT EXTRACT(YEAR FROM start_date)::INT AS year,
-             COALESCE(SUM(sanctioned_amount), 0)::FLOAT AS total_funding,
+      SELECT EXTRACT(YEAR FROM sanction_date)::INT AS year,
+             COALESCE(SUM(amount_lakhs), 0)::FLOAT AS total_funding,
              COUNT(*) AS project_count
-      FROM funded_projects
-      WHERE start_date IS NOT NULL
+      FROM "researchProject"
+      WHERE sanction_date IS NOT NULL
       GROUP BY year
       ORDER BY year ASC
     `);
@@ -49,31 +49,24 @@ const getFundingTrend = async (req, res, next) => {
   }
 };
 
-// Get status distribution
+// Get status distribution (from researchProject table)
 const getStatusDistribution = async (req, res, next) => {
   try {
     const result = await pool.query(
-      'SELECT start_date, end_date FROM funded_projects WHERE start_date IS NOT NULL AND end_date IS NOT NULL'
+      `SELECT status, COUNT(*)::int AS count FROM "researchProject" WHERE status IS NOT NULL GROUP BY status`
     );
 
-    const now = new Date();
-    const counts = { ongoing: 0, completed: 0, upcoming: 0 };
-
-    result.rows.forEach(({ start_date, end_date }) => {
-      const start = new Date(start_date);
-      const end = new Date(end_date);
-      if (now < start) {
-        counts.upcoming += 1;
-      } else if (now > end) {
-        counts.completed += 1;
-      } else {
-        counts.ongoing += 1;
-      }
+    const counts = { ONGOING: 0, COMPLETED: 0 };
+    result.rows.forEach(({ status, count }) => {
+      if (status === 'ONGOING' || status === 'COMPLETED') counts[status] = count;
     });
 
     res.json({
       success: true,
-      data: Object.entries(counts).map(([status, count]) => ({ status, count })),
+      data: [
+        { status: 'ongoing', count: counts.ONGOING },
+        { status: 'completed', count: counts.COMPLETED },
+      ],
     });
   } catch (error) {
     next(error);

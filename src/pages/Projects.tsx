@@ -10,11 +10,12 @@ interface Project {
   id: number;
   title: string;
   department?: string;
-  funding_agency?: string;
-  amount_lakhs?: number;
-  sanction_date?: string;
+  fundingAgency?: string;
+  amountLakhs?: number;
+  sanctionDate?: string;
+  startDate?: string;
   duration?: string;
-  principal_investigator?: string;
+  principalInvestigator?: string;
   status?: string;
 }
 
@@ -69,20 +70,20 @@ function ProjectCard({ project }: { project: Project }) {
         {project.department && (
           <p><span className="font-medium">Dept:</span> {project.department}</p>
         )}
-        {project.funding_agency && (
-          <p><span className="font-medium">Agency:</span> {project.funding_agency}</p>
+        {project.fundingAgency && (
+          <p><span className="font-medium">Agency:</span> {project.fundingAgency}</p>
         )}
-        {project.amount_lakhs && (
-          <p><span className="font-medium">Budget:</span> ₹{project.amount_lakhs.toLocaleString()} L</p>
+        {project.amountLakhs && (
+          <p><span className="font-medium">Budget:</span> ₹{Number(project.amountLakhs).toLocaleString()} L</p>
         )}
-        {project.sanction_date && (
+        {(project.sanctionDate || project.startDate) && (
           <p>
             <span className="font-medium">Sanctioned:</span>{" "}
-            {new Date(project.sanction_date).getFullYear()}
+            {new Date(project.sanctionDate || project.startDate!).getFullYear()}
           </p>
         )}
-        {project.principal_investigator && (
-          <p><span className="font-medium">PI:</span> {project.principal_investigator}</p>
+        {project.principalInvestigator && (
+          <p><span className="font-medium">PI:</span> {project.principalInvestigator}</p>
         )}
       </div>
       <Link
@@ -157,6 +158,7 @@ export default function Projects() {
     ...(status && { status }),
     ...(funding && { agency: funding }),
     ...(year && { year }),
+    ...(minBudget && { minBudget }),
   });
 
   const { data, isLoading } = useQuery<ApiResponse>({

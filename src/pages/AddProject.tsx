@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "@/services/api";
+import axiosInstance from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, PlusCircle } from "lucide-react";
@@ -14,29 +14,25 @@ export default function AddProject() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
-    principal_investigator: "",
-    co_principal_investigator: "",
+    principalInvestigator: "",
+    coPrincipalInvestigator: "",
     department: "",
-    funding_agency: "",
-    agency_scientist: "",
-    file_number: "",
-    sanctioned_amount: "",
-    start_date: "",
-    end_date: "",
-    objectives: "",
-    deliverables: "",
-    outcomes: "",
-    team: "",
+    fundingAgency: "",
+    sanctionedAmount: "",
+    startDate: "",
+    duration: "",
+    status: "ONGOING",
   });
 
-  if (!hasRole("admin")) {
+  if (!hasRole("admin") && !hasRole("faculty")) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground text-lg">Access denied. Admin role required.</p>
+        <p className="text-muted-foreground text-lg">Access denied. Admin or Faculty role required.</p>
         <Link to="/projects" className="text-primary hover:underline mt-4 inline-block">
           Back to Projects
         </Link>
@@ -44,7 +40,7 @@ export default function AddProject() {
     );
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -56,12 +52,24 @@ export default function AddProject() {
     }
     setSubmitting(true);
     try {
-      await api.post("/projects", {
-        ...form,
-        sanctioned_amount: form.sanctioned_amount ? parseFloat(form.sanctioned_amount) : null,
-      });
+      const resp = await axiosInstance.post<unknown, { success: boolean; data: { id: number } }>(
+        "/v1/projects",
+        {
+          title: form.title,
+          principalInvestigator: form.principalInvestigator || null,
+          coPrincipalInvestigator: form.coPrincipalInvestigator || null,
+          department: form.department || null,
+          fundingAgency: form.fundingAgency || null,
+          sanctionedAmount: form.sanctionedAmount ? parseFloat(form.sanctionedAmount) : null,
+          startDate: form.startDate || null,
+          duration: form.duration || null,
+          status: form.status,
+        }
+      );
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["v1-dashboard"] });
       toast({ title: "Project created", description: "The project was added successfully." });
-      navigate("/projects");
+      navigate(resp?.data?.id ? `/projects/${resp.data.id}` : "/projects");
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to create project.", variant: "destructive" });
     } finally {
@@ -93,58 +101,43 @@ export default function AddProject() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label htmlFor="principal_investigator">Principal Investigator</Label>
-                <Input id="principal_investigator" name="principal_investigator" value={form.principal_investigator} onChange={handleChange} />
+                <Label htmlFor="principalInvestigator">Principal Investigator</Label>
+                <Input id="principalInvestigator" name="principalInvestigator" value={form.principalInvestigator} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="co_principal_investigator">Co-PI</Label>
-                <Input id="co_principal_investigator" name="co_principal_investigator" value={form.co_principal_investigator} onChange={handleChange} />
+                <Label htmlFor="coPrincipalInvestigator">Co-PI</Label>
+                <Input id="coPrincipalInvestigator" name="coPrincipalInvestigator" value={form.coPrincipalInvestigator} onChange={handleChange} />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="department">Department</Label>
                 <Input id="department" name="department" value={form.department} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="funding_agency">Funding Agency</Label>
-                <Input id="funding_agency" name="funding_agency" value={form.funding_agency} onChange={handleChange} />
+                <Label htmlFor="fundingAgency">Funding Agency</Label>
+                <Input id="fundingAgency" name="fundingAgency" value={form.fundingAgency} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="agency_scientist">Agency Scientist</Label>
-                <Input id="agency_scientist" name="agency_scientist" value={form.agency_scientist} onChange={handleChange} />
+                <Label htmlFor="sanctionedAmount">Sanctioned Amount (Lakhs ₹)</Label>
+                <Input id="sanctionedAmount" name="sanctionedAmount" type="number" step="0.01" value={form.sanctionedAmount} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="file_number">File Number</Label>
-                <Input id="file_number" name="file_number" value={form.file_number} onChange={handleChange} />
+                <Label htmlFor="startDate">Sanction Date</Label>
+                <Input id="startDate" name="startDate" type="date" value={form.startDate} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="sanctioned_amount">Sanctioned Amount (₹)</Label>
-                <Input id="sanctioned_amount" name="sanctioned_amount" type="number" value={form.sanctioned_amount} onChange={handleChange} />
+                <Label htmlFor="duration">Duration</Label>
+                <Input id="duration" name="duration" placeholder="e.g. 2 years" value={form.duration} onChange={handleChange} />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input id="start_date" name="start_date" type="date" value={form.start_date} onChange={handleChange} />
+                <Label htmlFor="status">Status</Label>
+                <select
+                  id="status" name="status" value={form.status} onChange={handleChange}
+                  className="w-full px-3 py-2 rounded-md border text-sm"
+                >
+                  <option value="ONGOING">Ongoing</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="end_date">End Date</Label>
-                <Input id="end_date" name="end_date" type="date" value={form.end_date} onChange={handleChange} />
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="objectives">Objectives</Label>
-              <Textarea id="objectives" name="objectives" value={form.objectives} onChange={handleChange} rows={3} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="deliverables">Deliverables</Label>
-              <Textarea id="deliverables" name="deliverables" value={form.deliverables} onChange={handleChange} rows={3} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="outcomes">Outcomes</Label>
-              <Textarea id="outcomes" name="outcomes" value={form.outcomes} onChange={handleChange} rows={3} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="team">Team Members</Label>
-              <Textarea id="team" name="team" value={form.team} onChange={handleChange} rows={2} />
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -161,3 +154,4 @@ export default function AddProject() {
     </div>
   );
 }
+
