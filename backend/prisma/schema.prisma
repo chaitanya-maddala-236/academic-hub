@@ -12,7 +12,7 @@ datasource db {
 
 model journal {
   S_No                   Int     @id @map("S.No.")
-  Faculty_name           String? @map("Faculty name") @db.VarChar(512)
+  Faculty_name           String? @db.VarChar(512)
   Name_of_authors        String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper     String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Journal    String? @map("Name of the Journal") @db.VarChar(512)
