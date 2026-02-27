@@ -90,34 +90,38 @@ const getResearch = async (req, res, next) => {
     }
 
     if (includeProjects) {
-      const projSearchWhere = search
-        ? {
-            OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { principalInvestigator: { contains: search, mode: 'insensitive' } },
-              { fundingAgency: { contains: search, mode: 'insensitive' } },
-              { department: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : {};
+      try {
+        const projSearchWhere = search
+          ? {
+              OR: [
+                { title: { contains: search, mode: 'insensitive' } },
+                { principalInvestigator: { contains: search, mode: 'insensitive' } },
+                { fundingAgency: { contains: search, mode: 'insensitive' } },
+                { department: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {};
 
-      const projects = await prisma.researchProject.findMany({ where: projSearchWhere });
-      projects.forEach((p) =>
-        items.push({
-          recordType: 'project',
-          id: p.id,
-          title: p.title || null,
-          year: p.startDate ? p.startDate.getFullYear() : null,
-          department: p.department || null,
-          agency: p.fundingAgency || null,
-          pi: p.principalInvestigator || null,
-          coPi: p.coPrincipalInvestigator || null,
-          amount: p.sanctionedAmount ?? null,
-          status: p.status ? p.status.toLowerCase() : null,
-          startDate: p.startDate ? p.startDate.toISOString() : null,
-          createdAt: p.createdAt ? p.createdAt.toISOString() : null,
-        })
-      );
+        const projects = await prisma.researchProject.findMany({ where: projSearchWhere });
+        projects.forEach((p) =>
+          items.push({
+            recordType: 'project',
+            id: p.id,
+            title: p.title || null,
+            year: p.startDate ? p.startDate.getFullYear() : null,
+            department: p.department || null,
+            agency: p.fundingAgency || null,
+            pi: p.principalInvestigator || null,
+            coPi: p.coPrincipalInvestigator || null,
+            amount: p.sanctionedAmount ?? null,
+            status: p.status ? p.status.toLowerCase() : null,
+            startDate: p.startDate ? p.startDate.toISOString() : null,
+            createdAt: p.createdAt ? p.createdAt.toISOString() : null,
+          })
+        );
+      } catch (projectErr) {
+        console.warn('[research] Failed to load research projects:', projectErr);
+      }
     }
 
     // Sort by year desc
@@ -129,7 +133,7 @@ const getResearch = async (req, res, next) => {
 
     const total = items.length;
     const pageNum = Math.max(1, Number(page));
-    const limitNum = Math.min(200, Math.max(1, Number(limit)));
+    const limitNum = Math.min(1000, Math.max(1, Number(limit)));
     const paginated = items.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({
@@ -149,15 +153,24 @@ const getResearch = async (req, res, next) => {
  */
 const getResearchStats = async (req, res, next) => {
   try {
-    const [jCount, cCount, bCount, totalProjects, activeProjects] = await Promise.all([
+    const [jCount, cCount, bCount] = await Promise.all([
       prisma.journal.count(),
       prisma.conference.count(),
       prisma.bookchapter.count(),
-      prisma.researchProject.count(),
-      prisma.researchProject.count({
-        where: { status: { equals: 'ONGOING', mode: 'insensitive' } },
-      }),
     ]);
+
+    let totalProjects = 0;
+    let activeProjects = 0;
+    try {
+      [totalProjects, activeProjects] = await Promise.all([
+        prisma.researchProject.count(),
+        prisma.researchProject.count({
+          where: { status: { equals: 'ONGOING', mode: 'insensitive' } },
+        }),
+      ]);
+    } catch (projErr) {
+      console.warn('[research] Failed to count research projects:', projErr);
+    }
 
     res.json({
       success: true,
