@@ -3,14 +3,14 @@ const { z } = require('zod');
 
 const projectSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  principalInvestigator: z.string().optional(),
-  coPrincipalInvestigator: z.string().optional(),
-  department: z.string().optional(),
-  fundingAgency: z.string().optional(),
-  startDate: z.string().optional(),
-  sanctionedAmount: z.number().optional(),
-  duration: z.string().optional(),
-  status: z.enum(['ONGOING', 'COMPLETED', 'ongoing', 'completed']).optional(),
+  principalInvestigator: z.string().optional().nullable(),
+  coPrincipalInvestigator: z.string().optional().nullable(),
+  department: z.string().optional().nullable(),
+  fundingAgency: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  sanctionedAmount: z.number().optional().nullable(),
+  duration: z.string().optional().nullable(),
+  status: z.enum(['ONGOING', 'COMPLETED', 'ongoing', 'completed']).optional().nullable(),
 });
 
 const getAll = async (req, res, next) => {

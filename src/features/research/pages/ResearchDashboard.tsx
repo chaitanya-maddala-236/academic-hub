@@ -118,7 +118,7 @@ export default function ResearchDashboard() {
         </h1>
         <div className="w-14 h-1 bg-white/50 mt-2 rounded-full" />
         <p className="text-blue-100 mt-2 text-sm">
-          Unified view of Research Publications &amp; Projects
+          Manage and track all funded research projects
         </p>
       </div>
 

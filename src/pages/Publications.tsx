@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ITEMS_PER_PAGE = 10;
-type TabKey = "all" | "journals" | "conferences";
+type TabKey = "all" | "journals" | "conferences" | "bookchapters";
 
 const DEPT_OPTIONS = ["CSE", "ECE", "EEE", "ME", "IT", "CE", "H&S"];
 const INDEXING_OPTIONS = ["SCI", "Scopus", "WoS", "UGC"];
@@ -54,6 +54,7 @@ export default function Publications() {
         authors: pub.authors || "—",
         journal: pub.publication_type === "journal" ? pub.journal_name : null,
         conference: pub.publication_type === "conference" ? pub.journal_name : null,
+        bookchapter: pub.publication_type === "bookchapter" ? pub.journal_name : null,
         publisher: pub.publisher || "—",
         doi: pub.doi || null,
         indexing: pub.indexing ? [pub.indexing] : [],
@@ -72,11 +73,12 @@ export default function Publications() {
   }, [publications]);
 
   const stats = useMemo(() => {
-    if (!publications) return { total: 0, journals: 0, conferences: 0, international: 0, national: 0, indexed: 0 };
+    if (!publications) return { total: 0, journals: 0, conferences: 0, bookchapters: 0, international: 0, national: 0, indexed: 0 };
     return {
       total: publications.length,
       journals: publications.filter((p: any) => p.journal).length,
       conferences: publications.filter((p: any) => p.conference).length,
+      bookchapters: publications.filter((p: any) => p.bookchapter).length,
       international: publications.filter((p: any) => p.pub_type === "international").length,
       national: publications.filter((p: any) => p.pub_type === "national").length,
       indexed: publications.filter((p: any) => p.indexing && p.indexing.length > 0).length,
@@ -89,6 +91,7 @@ export default function Publications() {
 
     if (activeTab === "journals") result = result.filter((p: any) => p.journal);
     if (activeTab === "conferences") result = result.filter((p: any) => p.conference);
+    if (activeTab === "bookchapters") result = result.filter((p: any) => p.bookchapter);
 
     if (search) {
       const s = search.toLowerCase();
@@ -98,7 +101,8 @@ export default function Publications() {
           p.authors?.toLowerCase().includes(s) ||
           p.faculty?.name?.toLowerCase().includes(s) ||
           p.journal?.toLowerCase().includes(s) ||
-          p.conference?.toLowerCase().includes(s)
+          p.conference?.toLowerCase().includes(s) ||
+          p.bookchapter?.toLowerCase().includes(s)
       );
     }
 
@@ -108,6 +112,7 @@ export default function Publications() {
       result = result.filter((p: any) => {
         if (filterPubType.includes("journal") && p.journal) return true;
         if (filterPubType.includes("conference") && p.conference) return true;
+        if (filterPubType.includes("bookchapter") && p.bookchapter) return true;
         return false;
       });
     }
@@ -151,6 +156,7 @@ export default function Publications() {
             { key: "all" as TabKey, label: "All", count: stats.total },
             { key: "journals" as TabKey, label: "Journals", count: stats.journals },
             { key: "conferences" as TabKey, label: "Conferences", count: stats.conferences },
+            { key: "bookchapters" as TabKey, label: "Book Chapters", count: stats.bookchapters },
           ]).map((t) => (
             <button
               key={t.key}
@@ -216,7 +222,7 @@ export default function Publications() {
 
               {/* Type */}
               <SidebarSection title="Type">
-                {[{ key: "journal", label: "Journal" }, { key: "conference", label: "Conference" }].map((t) => (
+                {[{ key: "journal", label: "Journal" }, { key: "conference", label: "Conference" }, { key: "bookchapter", label: "Book Chapter" }].map((t) => (
                   <label key={t.key} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={filterPubType.includes(t.key)} onCheckedChange={() => toggleFilter(setFilterPubType, t.key)} />
                     {t.label}
@@ -318,6 +324,12 @@ export default function Publications() {
   );
 }
 
+function getVenueLabel(pub: any): string {
+  if (pub.journal) return "Journal";
+  if (pub.conference) return "Conference";
+  return "Book Chapter";
+}
+
 function PublicationItem({ pub, index }: { pub: any; index: number }) {
   return (
     <div className="rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow p-5">
@@ -336,8 +348,8 @@ function PublicationItem({ pub, index }: { pub: any; index: number }) {
               <p className="font-medium text-foreground line-clamp-1">{pub.authors ?? "—"}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">{pub.journal ? "Journal" : "Conference"}</span>
-              <p className="font-medium text-foreground line-clamp-1">{pub.journal || pub.conference || "—"}</p>
+              <span className="text-muted-foreground">{getVenueLabel(pub)}</span>
+              <p className="font-medium text-foreground line-clamp-1">{pub.journal || pub.conference || pub.bookchapter || "—"}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Department</span>

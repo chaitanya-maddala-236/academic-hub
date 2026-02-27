@@ -30,7 +30,6 @@ export default function FundedProjects() {
       p.department?.toLowerCase().includes(s)
     );
   }, [projects, search]);
-
   return (
     <div className="space-y-6">
       <div className="bg-primary rounded-xl px-6 py-5 text-primary-foreground">
@@ -89,7 +88,7 @@ export default function FundedProjects() {
                 <TableCell className="hidden md:table-cell">{project.department ?? "—"}</TableCell>
                 <TableCell className="hidden lg:table-cell">{project.fundingAgency ?? "—"}</TableCell>
                 <TableCell className="hidden lg:table-cell">
-                  {project.amountLakhs != null ? `₹${Number(project.amountLakhs).toLocaleString()}` : "—"}
+                  {project.sanctionedAmount != null ? `₹${Number(project.sanctionedAmount).toLocaleString()}` : "—"}
                 </TableCell>
                 <TableCell>
                   <Badge variant={

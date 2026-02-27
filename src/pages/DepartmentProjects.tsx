@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import axiosInstance from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,9 @@ export default function DepartmentProjects() {
   const { data: projects, isLoading } = useQuery({
     queryKey: ["all-projects-dept"],
     queryFn: async () => {
-      const response = await api.get<any>("/projects?page=1&limit=1000", false);
+      const response = await axiosInstance.get<unknown, { success: boolean; data: any[]; meta: any }>(
+        "/v1/projects?page=1&limit=1000"
+      );
       return response.data ?? [];
     },
   });
@@ -89,16 +91,16 @@ export default function DepartmentProjects() {
                             </Badge>
                           )}
                         </div>
-                        {project.principal_investigator && (
-                          <p className="text-sm">PI: {project.principal_investigator}</p>
+                        {project.principalInvestigator && (
+                          <p className="text-sm">PI: {project.principalInvestigator}</p>
                         )}
-                        {project.funding_agency && (
-                          <Badge variant="outline" className="text-xs">{project.funding_agency}</Badge>
+                        {project.fundingAgency && (
+                          <Badge variant="outline" className="text-xs">{project.fundingAgency}</Badge>
                         )}
-                        {project.start_date && (
+                        {project.startDate && (
                           <p className="text-xs text-muted-foreground">
-                            {new Date(project.start_date).getFullYear()}
-                            {project.end_date ? ` – ${new Date(project.end_date).getFullYear()}` : ""}
+                            {new Date(project.startDate).getFullYear()}
+                            {project.endDate ? ` – ${new Date(project.endDate).getFullYear()}` : ""}
                           </p>
                         )}
                       </CardContent>

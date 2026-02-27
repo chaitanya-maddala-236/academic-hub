@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import axiosInstance, { api } from "@/services/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -28,12 +28,15 @@ export default function FacultyProfile() {
   });
 
   const { data: projectsData } = useQuery({
-    queryKey: ["faculty-projects", id],
+    queryKey: ["faculty-projects", id, faculty?.name],
     queryFn: async () => {
-      const response = await api.get<any>(`/projects?pi_id=${id}`, false);
+      const search = encodeURIComponent(faculty!.name);
+      const response = await axiosInstance.get<unknown, { success: boolean; data: any[] }>(
+        `/v1/projects?limit=100&search=${search}`
+      );
       return response.data || [];
     },
-    enabled: !!id,
+    enabled: !!faculty?.name,
   });
 
   if (isLoading) return <div className="text-muted-foreground">Loading...</div>;
@@ -105,7 +108,7 @@ export default function FacultyProfile() {
               <Link key={p.id} to={`/projects/${p.id}`} className="block p-2 rounded hover:bg-muted/50">
                 <p className="text-sm font-medium">{p.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {p.start_date && new Date(p.start_date).getFullYear()} {p.department && `• ${p.department}`}
+                  {p.startDate && new Date(p.startDate).getFullYear()} {p.department && `• ${p.department}`}
                 </p>
               </Link>
             ))}
