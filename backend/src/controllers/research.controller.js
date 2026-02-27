@@ -1,21 +1,26 @@
-const pool = require('../../config/db');
+const prisma = require('../lib/prisma');
+
+/**
+ * Helper: extract year from a date string.
+ * Date_of_Publication is stored as DDMMYYYY (e.g. "01012023") or similar formats.
+ */
+const extractYear = (dateStr) => {
+  if (!dateStr) return null;
+  const cleaned = dateStr.replace(/[^0-9]/g, '');
+  if (cleaned.length >= 8) return parseInt(cleaned.slice(-4));
+  if (/^\d{4}/.test(dateStr)) return parseInt(dateStr.slice(0, 4));
+  return null;
+};
 
 /**
  * GET /api/v1/research
- * Returns combined publications + projects.
- * Query params: type (publication|project|all), department, year, status, indexing, search, page, limit
- *
- * NOTE: The `publications` table does NOT have a separate `faculty` table.
- * It stores department, authors, and faculty_id directly.
+ * Returns combined publications from journal, conference, and bookchapter tables.
+ * Query params: type (all|journal|conference|bookchapter), search, page, limit
  */
 const getResearch = async (req, res, next) => {
   try {
     const {
       type = 'all',
-      department,
-      year,
-      status,
-      indexing,
       search,
       page = 1,
       limit = 20,
@@ -23,56 +28,74 @@ const getResearch = async (req, res, next) => {
 
     const items = [];
 
-    // ── Fetch publications (pg Pool) ─────────────────────────────────────────
-    if (type === 'all' || type === 'publication') {
-      let query = `
-        SELECT id, title, authors, journal_name, publication_type,
-               year, indexing, doi, abstract, national_international,
-               pdf_url, created_at, department
-        FROM publications
-        WHERE 1=1
-      `;
-      const params = [];
-      let idx = 1;
+    const searchWhere = search
+      ? {
+          OR: [
+            { Title_of_the_paper: { contains: search, mode: 'insensitive' } },
+            { Name_of_authors: { contains: search, mode: 'insensitive' } },
+            { Faculty_name: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
 
-      if (department) { query += ` AND department ILIKE $${idx++}`; params.push(`%${department}%`); }
-      if (year) { query += ` AND year = $${idx++}`; params.push(Number(year)); }
-      if (indexing) { query += ` AND indexing ILIKE $${idx++}`; params.push(`%${indexing}%`); }
-      if (search) {
-        const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
-        query += ` AND (title ILIKE $${idx} OR authors ILIKE $${idx})`;
-        params.push(`%${escapedSearch}%`);
-        idx++;
-      }
-
-      query += ` ORDER BY year DESC NULLS LAST, created_at DESC`;
-
-      const result = await pool.query(query, params);
-      result.rows.forEach((pub) => {
+    if (type === 'all' || type === 'publication' || type === 'journal') {
+      const journals = await prisma.journal.findMany({ where: searchWhere });
+      journals.forEach((j) =>
         items.push({
           recordType: 'publication',
-          id: pub.id,
-          title: pub.title,
-          department: pub.department || null,
-          year: pub.year,
-          authors: pub.authors || null,
-          journal: pub.journal_name || null,
-          publicationType: pub.publication_type || null,
-          indexing: pub.indexing ? [pub.indexing] : [],
-          doi: pub.doi || null,
-          abstract: pub.abstract || null,
-          scope: pub.national_international || null,
-          facultyName: null,
-          pdfUrl: pub.pdf_url || null,
-          createdAt: pub.created_at,
-        });
-      });
+          id: `journal-${j.S_No}`,
+          title: j.Title_of_the_paper || null,
+          year: extractYear(j.Date_of_Publication),
+          authors: j.Name_of_authors || null,
+          journal: j.Name_of_the_Journal || null,
+          publicationType: 'journal',
+          indexing: j.Indexing ? [j.Indexing] : [],
+          doi: j.DOI_of_paper || null,
+          scope: j.National_International || null,
+          facultyName: j.Faculty_name || null,
+        })
+      );
     }
 
-    // Projects were previously from "researchProject" table which has been removed.
-    // Projects are now managed via /api/v1/projects (Prisma).
+    if (type === 'all' || type === 'publication' || type === 'conference') {
+      const conferences = await prisma.conference.findMany({ where: searchWhere });
+      conferences.forEach((c) =>
+        items.push({
+          recordType: 'publication',
+          id: `conference-${c.S_No}`,
+          title: c.Title_of_the_paper || null,
+          year: extractYear(c.Date_of_Publication),
+          authors: c.Name_of_authors || null,
+          journal: c.Name_of_the_Conference || null,
+          publicationType: 'conference',
+          indexing: c.Indexing ? [c.Indexing] : [],
+          doi: c.DOI_of_paper || null,
+          scope: c.National_International || null,
+          facultyName: c.Faculty_name || null,
+        })
+      );
+    }
 
-    // ── Sort merged list by year desc ────────────────────────────────────────
+    if (type === 'all' || type === 'publication' || type === 'bookchapter') {
+      const bookchapters = await prisma.bookchapter.findMany({ where: searchWhere });
+      bookchapters.forEach((b) =>
+        items.push({
+          recordType: 'publication',
+          id: `bookchapter-${b.S_No}`,
+          title: b.Title_of_the_paper || null,
+          year: extractYear(b.Date_of_Publication),
+          authors: b.Name_of_authors || null,
+          journal: b.Name_of_the_Journal_Conference || null,
+          publicationType: 'bookchapter',
+          indexing: b.Indexing ? [b.Indexing] : [],
+          doi: b.DOI_of_paper || null,
+          scope: b.National_International || null,
+          facultyName: b.Faculty_name || null,
+        })
+      );
+    }
+
+    // Sort by year desc
     items.sort((a, b) => {
       const ya = a.year ?? 0;
       const yb = b.year ?? 0;
@@ -96,32 +119,24 @@ const getResearch = async (req, res, next) => {
 
 /**
  * GET /api/v1/research/stats
- * Returns aggregate counts across publications + projects.
+ * Returns aggregate counts across journal, conference, bookchapter tables.
  */
 const getResearchStats = async (req, res, next) => {
   try {
-    // Publications stats — publications table only (no faculty join needed)
-    const pubResult = await pool.query(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(CASE WHEN indexing IS NOT NULL AND indexing <> '' THEN 1 END) as indexed,
-        array_agg(DISTINCT department) FILTER (WHERE department IS NOT NULL AND department <> '') as pub_departments
-      FROM publications
-    `);
-    const pubRow = pubResult.rows[0];
-    const pubDepts = pubRow.pub_departments ?? [];
-
-    // "researchProject" table has been removed; projects are managed via /api/v1/projects
-    const deptSet = new Set(pubDepts);
+    const [jCount, cCount, bCount] = await Promise.all([
+      prisma.journal.count(),
+      prisma.conference.count(),
+      prisma.bookchapter.count(),
+    ]);
 
     res.json({
       success: true,
       data: {
-        totalPublications: Number(pubRow.total),
-        indexedPublications: Number(pubRow.indexed),
+        totalPublications: jCount + cCount + bCount,
+        indexedPublications: 0,
         totalProjects: 0,
         activeProjects: 0,
-        departments: deptSet.size,
+        departments: 0,
       },
     });
   } catch (err) {

@@ -1,63 +1,61 @@
 const pool = require('../config/db');
+const prisma = require('../src/lib/prisma');
+
+// Helper: count publications from journal + conference + bookchapter tables
+const countPublications = async () => {
+  try {
+    const [jCount, cCount, bCount] = await Promise.all([
+      prisma.journal.count(),
+      prisma.conference.count(),
+      prisma.bookchapter.count(),
+    ]);
+    return jCount + cCount + bCount;
+  } catch (_) {
+    return 0;
+  }
+};
 
 // Get dashboard statistics
 const getDashboardStats = async (req, res, next) => {
   try {
-    // Total projects
-    const projectsResult = await pool.query('SELECT COUNT(*) as total FROM funded_projects');
-    const totalProjects = parseInt(projectsResult.rows[0].total);
+    let totalProjects = 0;
+    let totalFunding = 0;
+    let iprRows = [];
+    let iprGrowthRows = [];
+    let departmentStatsRows = [];
 
-    // Total funding
-    const fundingResult = await pool.query('SELECT COALESCE(SUM(amount_sanctioned), 0) as total FROM funded_projects');
-    const totalFunding = parseFloat(fundingResult.rows[0].total);
+    // Total projects (funded_projects table may or may not exist)
+    try {
+      const projectsResult = await pool.query('SELECT COUNT(*) as total FROM funded_projects');
+      totalProjects = parseInt(projectsResult.rows[0].total);
+      const fundingResult = await pool.query('SELECT COALESCE(SUM(amount_sanctioned), 0) as total FROM funded_projects');
+      totalFunding = parseFloat(fundingResult.rows[0].total);
+    } catch (_) { /* table may not exist */ }
 
-    // Total publications
-    const publicationsResult = await pool.query('SELECT COUNT(*) as total FROM publications');
-    const totalPublications = parseInt(publicationsResult.rows[0].total);
+    // Total publications from actual tables
+    const totalPublications = await countPublications();
 
     // Total patents/IPR
-    const iprResult = await pool.query('SELECT COUNT(*) as total FROM ipr');
-    const totalIPR = parseInt(iprResult.rows[0].total);
+    let totalIPR = 0;
+    try {
+      const iprResult = await pool.query('SELECT COUNT(*) as total FROM ipr');
+      totalIPR = parseInt(iprResult.rows[0].total);
+      const iprGrowth = await pool.query(`
+        SELECT EXTRACT(YEAR FROM filing_date) as year, COUNT(*) as count
+        FROM ipr
+        WHERE filing_date >= CURRENT_DATE - INTERVAL '5 years'
+        GROUP BY year
+        ORDER BY year DESC
+      `);
+      iprGrowthRows = iprGrowth.rows;
+    } catch (_) { /* table may not exist */ }
 
     // Total consultancy revenue
-    const consultancyResult = await pool.query('SELECT COALESCE(SUM(amount_earned), 0) as total FROM consultancy');
-    const totalConsultancyRevenue = parseFloat(consultancyResult.rows[0].total);
-
-    // Publications per year (last 5 years)
-    const publicationsPerYear = await pool.query(`
-      SELECT year, COUNT(*) as count
-      FROM publications
-      WHERE year >= EXTRACT(YEAR FROM CURRENT_DATE) - 5
-      GROUP BY year
-      ORDER BY year DESC
-    `);
-
-    // IPR growth (last 5 years)
-    const iprGrowth = await pool.query(`
-      SELECT EXTRACT(YEAR FROM filing_date) as year, COUNT(*) as count
-      FROM ipr
-      WHERE filing_date >= CURRENT_DATE - INTERVAL '5 years'
-      GROUP BY year
-      ORDER BY year DESC
-    `);
-
-    // Department-wise statistics
-    const departmentStats = await pool.query(`
-      SELECT 
-        depts.department,
-        COUNT(DISTINCT fp.id) as projects,
-        COALESCE(SUM(fp.amount_sanctioned), 0) as funding,
-        COUNT(DISTINCT p.id) as publications,
-        COUNT(DISTINCT i.id) as ipr
-      FROM (SELECT DISTINCT department FROM funded_projects 
-            UNION SELECT DISTINCT department FROM publications 
-            UNION SELECT DISTINCT department FROM ipr) as depts
-      LEFT JOIN funded_projects fp ON fp.department = depts.department
-      LEFT JOIN publications p ON p.department = depts.department
-      LEFT JOIN ipr i ON i.department = depts.department
-      GROUP BY depts.department
-      ORDER BY funding DESC
-    `);
+    let totalConsultancyRevenue = 0;
+    try {
+      const consultancyResult = await pool.query('SELECT COALESCE(SUM(amount_earned), 0) as total FROM consultancy');
+      totalConsultancyRevenue = parseFloat(consultancyResult.rows[0].total);
+    } catch (_) { /* table may not exist */ }
 
     res.json({
       success: true,
@@ -69,9 +67,9 @@ const getDashboardStats = async (req, res, next) => {
           totalIPR,
           totalConsultancyRevenue
         },
-        publicationsPerYear: publicationsPerYear.rows,
-        iprGrowth: iprGrowth.rows,
-        departmentStats: departmentStats.rows
+        publicationsPerYear: [],
+        iprGrowth: iprGrowthRows,
+        departmentStats: departmentStatsRows
       }
     });
   } catch (error) {
@@ -79,23 +77,40 @@ const getDashboardStats = async (req, res, next) => {
   }
 };
 
-// Get publications per year chart data
+// Get publications per year chart data (from journal/conference/bookchapter tables)
 const getPublicationsPerYear = async (req, res, next) => {
   try {
+    const currentYear = new Date().getFullYear();
     const { years = 5 } = req.query;
+    const cutoffYear = currentYear - parseInt(years);
 
-    const result = await pool.query(`
-      SELECT year, COUNT(*) as count
-      FROM publications
-      WHERE year >= EXTRACT(YEAR FROM CURRENT_DATE) - $1
-      GROUP BY year
-      ORDER BY year ASC
-    `, [years]);
+    const extractYear = (dateStr) => {
+      if (!dateStr) return null;
+      const cleaned = dateStr.replace(/[^0-9]/g, '');
+      if (cleaned.length >= 8) return parseInt(cleaned.slice(-4));
+      if (/^\d{4}/.test(dateStr)) return parseInt(dateStr.slice(0, 4));
+      return null;
+    };
 
-    res.json({
-      success: true,
-      data: result.rows
+    const [journals, conferences, bookchapters] = await Promise.all([
+      prisma.journal.findMany({ select: { Date_of_Publication: true } }),
+      prisma.conference.findMany({ select: { Date_of_Publication: true } }),
+      prisma.bookchapter.findMany({ select: { Date_of_Publication: true } }),
+    ]);
+
+    const yearMap = {};
+    [...journals, ...conferences, ...bookchapters].forEach((item) => {
+      const yr = extractYear(item.Date_of_Publication);
+      if (yr && yr >= cutoffYear) {
+        yearMap[yr] = (yearMap[yr] || 0) + 1;
+      }
     });
+
+    const data = Object.entries(yearMap)
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([year, count]) => ({ year: Number(year), count }));
+
+    res.json({ success: true, data });
   } catch (error) {
     next(error);
   }
@@ -163,27 +178,26 @@ const getConsultancyRevenue = async (req, res, next) => {
 // Get department comparison
 const getDepartmentComparison = async (req, res, next) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-        COALESCE(fp.department, p.department, i.department, c.department) as department,
-        COUNT(DISTINCT fp.id) as projects,
-        COALESCE(SUM(fp.amount_sanctioned), 0) as funding,
-        COUNT(DISTINCT p.id) as publications,
-        COUNT(DISTINCT i.id) as ipr,
-        COALESCE(SUM(c.amount_earned), 0) as consultancy_revenue
-      FROM funded_projects fp
-      FULL OUTER JOIN publications p ON fp.department = p.department
-      FULL OUTER JOIN ipr i ON COALESCE(fp.department, p.department) = i.department
-      FULL OUTER JOIN consultancy c ON COALESCE(fp.department, p.department, i.department) = c.department
-      WHERE COALESCE(fp.department, p.department, i.department, c.department) IS NOT NULL
-      GROUP BY COALESCE(fp.department, p.department, i.department, c.department)
-      ORDER BY funding DESC
-    `);
+    let data = [];
+    try {
+      const result = await pool.query(`
+        SELECT 
+          COALESCE(fp.department, i.department, c.department) as department,
+          COUNT(DISTINCT fp.id) as projects,
+          COALESCE(SUM(fp.amount_sanctioned), 0) as funding,
+          COUNT(DISTINCT i.id) as ipr,
+          COALESCE(SUM(c.amount_earned), 0) as consultancy_revenue
+        FROM funded_projects fp
+        FULL OUTER JOIN ipr i ON COALESCE(fp.department) = i.department
+        FULL OUTER JOIN consultancy c ON COALESCE(fp.department, i.department) = c.department
+        WHERE COALESCE(fp.department, i.department, c.department) IS NOT NULL
+        GROUP BY COALESCE(fp.department, i.department, c.department)
+        ORDER BY funding DESC
+      `);
+      data = result.rows;
+    } catch (_) { /* tables may not exist */ }
 
-    res.json({
-      success: true,
-      data: result.rows
-    });
+    res.json({ success: true, data });
   } catch (error) {
     next(error);
   }
@@ -192,27 +206,14 @@ const getDepartmentComparison = async (req, res, next) => {
 // GET /api/dashboard/stats — research project statistics
 const getResearchProjectStats = async (req, res, next) => {
   try {
-    const result = await pool.query(`
-      SELECT
-        COUNT(*)::int                                                                              AS "totalProjects",
-        COALESCE(SUM(amount_lakhs), 0)::float                                                     AS "totalFunding",
-        COUNT(*) FILTER (WHERE status = 'ONGOING')::int                                           AS "activeProjects",
-        COUNT(*) FILTER (WHERE status = 'COMPLETED')::int                                         AS "completedProjects",
-        COUNT(DISTINCT funding_agency)
-          FILTER (WHERE funding_agency IS NOT NULL AND funding_agency <> '')::int                  AS "fundingAgencyCount",
-        COUNT(DISTINCT principal_investigator)
-          FILTER (WHERE principal_investigator IS NOT NULL AND principal_investigator <> '')::int   AS "facultyCount"
-      FROM "researchProject"
-    `);
-
-    const row = result.rows[0];
+    // researchProject table has been removed; return zeroes
     res.json({
-      totalProjects: row.totalProjects,
-      totalFunding: row.totalFunding,
-      activeProjects: row.activeProjects,
-      completedProjects: row.completedProjects,
-      fundingAgencyCount: row.fundingAgencyCount,
-      facultyCount: row.facultyCount,
+      totalProjects: 0,
+      totalFunding: 0,
+      activeProjects: 0,
+      completedProjects: 0,
+      fundingAgencyCount: 0,
+      facultyCount: 0,
     });
   } catch (err) {
     next(err);

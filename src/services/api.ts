@@ -120,7 +120,7 @@ export interface ProjectStatsResponse {
 
 export interface ResearchItem {
   recordType: 'publication' | 'project';
-  id: number;
+  id: string | number;
   title: string;
   department?: string | null;
   year?: number | null;
