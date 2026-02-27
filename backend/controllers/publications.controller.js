@@ -16,6 +16,7 @@ const mapJournal = (j) => ({
   doi: j.DOI_of_paper || null,
   faculty_name: j.Faculty_name || null,
   publisher: j.Name_of_the_publisher || null,
+  vol_issue_pg: j.Vol_Issue_Pg_ISBN || null,
   department: null,
 });
 
