@@ -23,7 +23,7 @@ const navItems = [
   { title: "Academic Projects", url: "/academic-projects", icon: GraduationCap, placeholder: true },
   { title: "Patents", url: "/patents", icon: ShieldCheck, placeholder: true },
   { title: "IP Assets", url: "/ip-assets", icon: Lightbulb, placeholder: true },
-  { title: "Consultancy Works", url: "/consultancy", icon: Banknote, placeholder: true },
+  { title: "Consultancy Works", url: "/consultancy", icon: Banknote },
   { title: "Research Labs", url: "/research-labs", icon: FlaskConical, placeholder: true },
   { title: "Faculty Profiles", url: "/faculty", icon: Users, placeholder: true },
   { title: "Materials", url: "/materials", icon: Package, placeholder: true },

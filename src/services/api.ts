@@ -212,4 +212,60 @@ export const projectsApi = {
     axiosInstance.get('/v1/projects/dashboard') as unknown as Promise<ProjectStatsResponse>,
 };
 
+// ─── Consultancy API ──────────────────────────────────────────────────────────
+
+export interface ConsultancyRecord {
+  id: number;
+  project_title: string;
+  principal_investigator?: string | null;
+  co_investigators?: string | null;
+  department?: string | null;
+  institute_level?: string | null;
+  estimated_amount_lakhs?: number | null;
+  received_amount_lakhs?: number | null;
+  remarks?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+}
+
+export interface ConsultancyMetrics {
+  totalProjects: number;
+  totalEstimated: number;
+  totalReceived: number;
+  activeProjects: number;
+  completedProjects: number;
+  pendingProjects: number;
+}
+
+export interface ConsultancyListResponse {
+  success: boolean;
+  data: ConsultancyRecord[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export const consultancyApi = {
+  getMetrics: (): Promise<{ success: boolean; data: ConsultancyMetrics }> =>
+    axiosInstance.get('/consultancy/metrics') as unknown as Promise<{ success: boolean; data: ConsultancyMetrics }>,
+  getAll: (params?: { department?: string; status?: string; search?: string; page?: number; limit?: number }): Promise<ConsultancyListResponse> => {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined && v !== '')
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : '';
+    return axiosInstance.get(`/consultancy${qs ? '?' + qs : ''}`) as unknown as Promise<ConsultancyListResponse>;
+  },
+  getById: (id: number | string): Promise<{ success: boolean; data: ConsultancyRecord }> =>
+    axiosInstance.get(`/consultancy/${id}`) as unknown as Promise<{ success: boolean; data: ConsultancyRecord }>,
+  create: (data: Omit<ConsultancyRecord, 'id' | 'created_at'>): Promise<{ success: boolean; data: ConsultancyRecord }> =>
+    axiosInstance.post('/consultancy', data) as unknown as Promise<{ success: boolean; data: ConsultancyRecord }>,
+  update: (id: number | string, data: Partial<ConsultancyRecord>): Promise<{ success: boolean; data: ConsultancyRecord }> =>
+    axiosInstance.put(`/consultancy/${id}`, data) as unknown as Promise<{ success: boolean; data: ConsultancyRecord }>,
+  delete: (id: number | string): Promise<{ success: boolean }> =>
+    axiosInstance.delete(`/consultancy/${id}`) as unknown as Promise<{ success: boolean }>,
+};
+
 export default axiosInstance;

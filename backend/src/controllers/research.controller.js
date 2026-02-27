@@ -69,51 +69,8 @@ const getResearch = async (req, res, next) => {
       });
     }
 
-    // ── Fetch projects (pg Pool — "researchProject" table) ───────────────────
-    if (type === 'all' || type === 'project') {
-      let query = `
-        SELECT id, title, department, funding_agency, sanction_date,
-               amount_lakhs, principal_investigator, co_investigators,
-               duration, status, created_at
-        FROM "researchProject"
-        WHERE 1=1
-      `;
-      const params = [];
-      let idx = 1;
-
-      if (department) { query += ` AND department ILIKE $${idx++}`; params.push(`%${department}%`); }
-      if (year) { query += ` AND EXTRACT(YEAR FROM sanction_date) = $${idx++}`; params.push(Number(year)); }
-      if (status) {
-        query += ` AND status = $${idx++}`;
-        params.push(status.toUpperCase());
-      }
-      if (search) {
-        const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
-        query += ` AND (title ILIKE $${idx} OR principal_investigator ILIKE $${idx} OR funding_agency ILIKE $${idx} OR department ILIKE $${idx})`;
-        params.push(`%${escapedSearch}%`);
-        idx++;
-      }
-
-      query += ` ORDER BY sanction_date DESC NULLS LAST, created_at DESC`;
-
-      const result = await pool.query(query, params);
-      result.rows.forEach((p) => {
-        items.push({
-          recordType: 'project',
-          id: p.id,
-          title: p.title,
-          department: p.department || null,
-          year: p.sanction_date ? new Date(p.sanction_date).getFullYear() : null,
-          agency: p.funding_agency || null,
-          pi: p.principal_investigator || null,
-          coPi: p.co_investigators || null,
-          amount: p.amount_lakhs ? Number(p.amount_lakhs) : null,
-          status: p.status ? p.status.toLowerCase() : null,
-          startDate: p.sanction_date ? new Date(p.sanction_date).toISOString() : null,
-          createdAt: p.created_at,
-        });
-      });
-    }
+    // Projects were previously from "researchProject" table which has been removed.
+    // Projects are now managed via /api/v1/projects (Prisma).
 
     // ── Sort merged list by year desc ────────────────────────────────────────
     items.sort((a, b) => {
@@ -154,27 +111,16 @@ const getResearchStats = async (req, res, next) => {
     const pubRow = pubResult.rows[0];
     const pubDepts = pubRow.pub_departments ?? [];
 
-    // Projects stats — "researchProject" table
-    const projResult = await pool.query(`
-      SELECT
-        COUNT(*)::int                                                           AS total_projects,
-        COUNT(*) FILTER (WHERE status = 'ONGOING')::int                        AS active_projects,
-        array_agg(DISTINCT department) FILTER (WHERE department IS NOT NULL)   AS proj_departments
-      FROM "researchProject"
-    `);
-    const projRow = projResult.rows[0];
-    const projDepts = projRow.proj_departments ?? [];
-
-    // Union publication + project departments for accurate unique count
-    const deptSet = new Set([...pubDepts, ...projDepts]);
+    // "researchProject" table has been removed; projects are managed via /api/v1/projects
+    const deptSet = new Set(pubDepts);
 
     res.json({
       success: true,
       data: {
         totalPublications: Number(pubRow.total),
         indexedPublications: Number(pubRow.indexed),
-        totalProjects: projRow.total_projects,
-        activeProjects: projRow.active_projects,
+        totalProjects: 0,
+        activeProjects: 0,
         departments: deptSet.size,
       },
     });
