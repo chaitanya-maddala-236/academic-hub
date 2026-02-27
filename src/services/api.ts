@@ -187,10 +187,10 @@ export const researchApi = {
           )
         ).toString()
       : '';
-    return axiosInstance.get(`/research${qs ? '?' + qs : ''}`) as unknown as Promise<ResearchListResponse>;
+    return axiosInstance.get(`/v1/research${qs ? '?' + qs : ''}`) as unknown as Promise<ResearchListResponse>;
   },
   getResearchStats: (): Promise<ResearchStatsResponse> =>
-    axiosInstance.get('/research/stats') as unknown as Promise<ResearchStatsResponse>,
+    axiosInstance.get('/v1/research/stats') as unknown as Promise<ResearchStatsResponse>,
 };
 
 export const projectsApi = {

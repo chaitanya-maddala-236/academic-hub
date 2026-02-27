@@ -52,3 +52,26 @@ model bookchapter {
   Name_of_the_publisher           String? @map("Name of the publisher") @db.VarChar(512)
   DOI_of_paper                    String? @map("DOI of paper") @db.VarChar(512)
 }
+
+model researchProject {
+  id                      Int       @id @default(autoincrement())
+  title                   String    @db.VarChar(512)
+  abstract                String?   @db.Text
+  department              String?   @db.VarChar(200)
+  fundingAgency           String?   @db.VarChar(200)
+  agencyScientist         String?   @db.VarChar(200)
+  fileNumber              String?   @db.VarChar(100)
+  sanctionedAmount        Float?
+  startDate               DateTime?
+  endDate                 DateTime?
+  principalInvestigator   String?   @db.VarChar(200)
+  coPrincipalInvestigator String?   @db.VarChar(200)
+  teamMembers             Json?
+  deliverables            String?   @db.Text
+  outcomes                String?   @db.Text
+  attachments             Json?
+  status                  String?   @db.VarChar(50)
+  duration                String?   @db.VarChar(100)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}
