@@ -1,6 +1,3 @@
-// This is your Prisma schema file
-// Datasource: Neon PostgreSQL
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,73 +8,96 @@ datasource db {
 }
 
 model journal {
-  S_No                   Int     @id @map("S.No.")
-  Faculty_name           String? @db.VarChar(512)
-  Name_of_authors        String? @map("Name of author/s") @db.VarChar(512)
-  Title_of_the_paper     String? @map("Title of the paper") @db.VarChar(512)
-  Name_of_the_Journal    String? @map("Name of the Journal") @db.VarChar(512)
-  National_International String? @map("National/ International") @db.VarChar(512)
-  Date_of_Publication    String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Indexing               String? @db.VarChar(512)
-  Name_of_the_publisher  String? @map("Name of the publisher") @db.VarChar(512)
-  DOI_of_paper           String? @map("DOI of paper") @db.VarChar(512)
+  S_No                                           Int      @id @map("S.No.")
+  Faculty_name                                   String?  @db.VarChar(512)
+  Name_of_authors                                String?  @map("Name of author/s") @db.VarChar(512)
+  Title_of_the_paper                             String?  @map("Title of the paper") @db.VarChar(512)
+  Name_of_the_Journal                            String?  @map("Name of the Journal") @db.VarChar(512)
+  National_International                         String?  @map("National/ International") @db.VarChar(512)
+  Date_of_Publication                            String?  @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
+  Vol__no____Issue_no___Pg__no__ISBN_ISSN_Nnmber String?  @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Nnmber") @db.VarChar(512)
+  Indexing                                       String?  @db.VarChar(512)
+  Name_of_the_publisher                          String?  @map("Name of the publisher") @db.VarChar(512)
+  DOI_of_paper                                   String?  @map("DOI of paper") @db.VarChar(512)
+  journal_Vol_                                   String?  @map("journal.Vol.")
 }
 
 model conference {
-  S_No                     Int     @id @map("S.No.")
-  Faculty_name             String? @map("Faculty name") @db.VarChar(512)
-  Name_of_authors          String? @map("Name of author/s") @db.VarChar(512)
-  Title_of_the_paper       String? @map("Title of the paper") @db.VarChar(512)
-  Name_of_the_Conference   String? @map("Name of the Conference") @db.VarChar(512)
-  National_International   String? @map("National/ International") @db.VarChar(512)
-  Date_of_Publication      String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Indexing                 String? @db.VarChar(512)
-  Name_of_the_publisher    String? @map("Name of the publisher") @db.VarChar(512)
-  DOI_of_paper             String? @map("DOI of paper") @db.VarChar(512)
+  S_No                                           Int      @id @map("S.No.")
+  Faculty_name                                   String?  @map("Faculty name") @db.VarChar(512)
+  Name_of_authors                                String?  @map("Name of author/s") @db.VarChar(512)
+  Title_of_the_paper                             String?  @map("Title of the paper") @db.VarChar(512)
+  Name_of_the_Conference                         String?  @map("Name of the Conference") @db.VarChar(512)
+  National_International                         String?  @map("National/ International") @db.VarChar(512)
+  Date_of_Publication                            String?  @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
+  Vol__no____Issue_no___Pg__no__ISBN_ISSN_Number String?  @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number") @db.VarChar(512)
+  Indexing                                       String?  @db.VarChar(512)
+  Name_of_the_publisher                          String?  @map("Name of the publisher") @db.VarChar(512)
+  DOI_of_paper                                   String?  @map("DOI of paper") @db.VarChar(512)
 }
 
 model bookchapter {
-  S_No                            Int     @id @map("S.No.")
-  Faculty_name                    String? @map("Faculty name") @db.VarChar(512)
-  Journal_Conference_Book         String? @map("Journal/ Conference/Book Chapter") @db.VarChar(512)
-  Name_of_authors                 String? @map("Name of author/s") @db.VarChar(512)
-  Title_of_the_paper              String? @map("Title of the paper") @db.VarChar(512)
-  Name_of_the_Journal_Conference  String? @map("Name of the Journal/ Conference") @db.VarChar(512)
-  National_International          String? @map("National/ International") @db.VarChar(512)
-  Date_of_Publication             String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Indexing                        String? @db.VarChar(512)
-  Name_of_the_publisher           String? @map("Name of the publisher") @db.VarChar(512)
-  DOI_of_paper                    String? @map("DOI of paper") @db.VarChar(512)
+  S_No                            Int      @id @map("S.No.")
+  Faculty_name                    String?  @map("Faculty name") @db.VarChar(512)
+  Journal_Type                    String?  @map("Journal/ Conference/Book Chapter") @db.VarChar(512)
+  Name_of_authors                 String?  @map("Name of author/s") @db.VarChar(512)
+  Title_of_the_paper              String?  @map("Title of the paper") @db.VarChar(512)
+  Name_of_the_Journal_Conference  String?  @map("Name of the Journal/ Conference") @db.VarChar(512)
+  National_International          String?  @map("National/ International") @db.VarChar(512)
+Date_of_Publication String? @map("Date of  Publication (DDMMYYYY)")
+  Vol_Issue_Pg_ISBN               String?  @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Nnmber") @db.VarChar(512)
+  Indexing                        String?  @db.VarChar(512)
+  Name_of_the_publisher           String?  @map("Name of the publisher") @db.VarChar(512)
+  DOI_of_paper                    String?  @map("DOI of paper") @db.VarChar(512)
+
+  @@map("bookchapter")
 }
 
-// Maps to the actual `researchprojects` table in the database
 model researchProject {
   id                      Int       @id @default(autoincrement())
-  title                   String    @db.Text
-  principalInvestigator   String?   @map("principal_investigator") @db.Text
-  coPrincipalInvestigator String?   @map("co_investigators") @db.Text
-  department              String?   @db.Text
-  fundingAgency           String?   @map("funding_agency") @db.Text
+  title                   String
+  principalInvestigator   String?   @map("principal_investigator")
+  coPrincipalInvestigator String?   @map("co_investigators")
+  department              String?
+  fundingAgency           String?   @map("funding_agency")
   startDate               DateTime? @map("sanction_date") @db.Date
-  sanctionedAmount        Float?    @map("amount_lakhs")
-  duration                String?   @db.Text
+  sanctionedAmount        Decimal?  @map("amount_lakhs") @db.Decimal(10, 2)
+  duration                String?
   status                  String?   @db.VarChar(20)
-  createdAt               DateTime  @default(now()) @map("created_at")
+  createdAt               DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
 
   @@map("researchprojects")
 }
 
-// Maps to the `publications` table in the database
 model publications {
-  id           Int      @id @default(autoincrement())
-  title        String   @db.Text
-  authors      String?  @db.Text
-  journal_name String?  @db.Text
+  id           Int       @id @default(autoincrement())
+  title        String
+  authors      String?
+  journal_name String?
   year         Int?
-  volume       String?  @db.Text
-  issue        String?  @db.Text
-  pages        String?  @db.Text
-  doi          String?  @db.Text
-  indexed_in   String?  @db.Text
-  created_at   DateTime @default(now())
+  volume       String?
+  issue        String?
+  pages        String?
+  doi          String?
+  indexed_in   String?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model ongoing_consultancy {
+  id                     Int       @id(map: "ongoing_consultancy_projects_pkey") @default(autoincrement())
+  project_title          String
+  principal_investigator String?
+  co_investigators       String?
+  department             String?   @db.VarChar(100)
+  institute_level        String?   @db.VarChar(100)
+  estimated_amount_lakhs Decimal?  @db.Decimal(10, 2)
+  received_amount_lakhs  Decimal?  @db.Decimal(10, 2)
+  remarks                String?
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  status                 String?   @db.VarChar
+}
+
+enum ProjectStatus {
+  ONGOING
+  COMPLETED
 }

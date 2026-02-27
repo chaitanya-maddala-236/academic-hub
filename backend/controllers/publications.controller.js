@@ -48,7 +48,7 @@ const mapBookchapter = (b) => ({
   authors: b.Name_of_authors || null,
   journal_name: b.Name_of_the_Journal_Conference || null,
   publication_type: 'bookchapter',
-  year: extractYear(b.Date_of_Publication),
+year: extractYear(b.Date_of__Publication),
   indexing: b.Indexing || null,
   national_international: b.National_International || null,
   doi: b.DOI_of_paper || null,
