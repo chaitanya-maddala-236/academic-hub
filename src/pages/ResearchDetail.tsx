@@ -190,7 +190,7 @@ function ProjectDetailView({ id }: { id: string }) {
   const { data: resp, isLoading } = useQuery({
     queryKey: ["research-proj", id],
     queryFn: () =>
-      axiosInstance.get<unknown, { success: boolean; data: any }>(`/projects/${id}`),
+      axiosInstance.get<unknown, { success: boolean; data: any }>(`/v1/projects/${id}`),
     enabled: !!id,
   });
 
