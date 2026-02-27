@@ -10,43 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum ProjectStatus {
-  ONGOING
-  COMPLETED
-}
-
-model Project {
-  id                     Int           @id @default(autoincrement())
-  title                  String
-  principalInvestigator  String?       @map("principal_investigator")
-  coInvestigators        String?       @map("co_investigators")
-  department             String?
-  fundingAgency          String?       @map("funding_agency")
-  sanctionDate           DateTime?     @map("sanction_date") @db.Date
-  amountLakhs            Decimal?      @map("amount_lakhs") @db.Decimal(10, 2)
-  duration               String?
-  status                 ProjectStatus
-  createdAt              DateTime      @default(now()) @map("created_at")
-
-  @@map("researchProject")
-}
-
-model Publication {
-  id          Int      @id @default(autoincrement())
-  title       String
-  authors     String?
-  journalName String?  @map("journal_name")
-  year        Int?
-  volume      String?
-  issue       String?
-  pages       String?
-  doi         String?
-  indexedIn   String?  @map("indexed_in")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  @@map("publications")
-}
-
 model journal {
   S_No                   Int     @id @map("S.No.")
   Faculty_name           String? @db.VarChar(512)

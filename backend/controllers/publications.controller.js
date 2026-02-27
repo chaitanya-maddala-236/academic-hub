@@ -1,4 +1,62 @@
-const pool = require('../config/db');
+const prisma = require('../src/lib/prisma');
+const { extractYear } = require('../src/lib/dateUtils');
+
+/**
+ * Map a raw journal row to the standard publication shape.
+ */
+const mapJournal = (j) => ({
+  id: `journal-${j.S_No}`,
+  title: j.Title_of_the_paper || null,
+  authors: j.Name_of_authors || null,
+  journal_name: j.Name_of_the_Journal || null,
+  publication_type: 'journal',
+  year: extractYear(j.Date_of_Publication),
+  indexing: j.Indexing || null,
+  national_international: j.National_International || null,
+  doi: j.DOI_of_paper || null,
+  faculty_name: j.Faculty_name || null,
+  publisher: j.Name_of_the_publisher || null,
+  vol_issue_pg: j.Vol_Issue_Pg_ISBN || null,
+  department: null,
+});
+
+/**
+ * Map a raw conference row to the standard publication shape.
+ */
+const mapConference = (c) => ({
+  id: `conference-${c.S_No}`,
+  title: c.Title_of_the_paper || null,
+  authors: c.Name_of_authors || null,
+  journal_name: c.Name_of_the_Conference || null,
+  publication_type: 'conference',
+  year: extractYear(c.Date_of_Publication),
+  indexing: c.Indexing || null,
+  national_international: c.National_International || null,
+  doi: c.DOI_of_paper || null,
+  faculty_name: c.Faculty_name || null,
+  publisher: c.Name_of_the_publisher || null,
+  vol_issue_pg: c.Vol_Issue_Pg_ISBN || null,
+  department: null,
+});
+
+/**
+ * Map a raw bookchapter row to the standard publication shape.
+ */
+const mapBookchapter = (b) => ({
+  id: `bookchapter-${b.S_No}`,
+  title: b.Title_of_the_paper || null,
+  authors: b.Name_of_authors || null,
+  journal_name: b.Name_of_the_Journal_Conference || null,
+  publication_type: 'bookchapter',
+  year: extractYear(b.Date_of_Publication),
+  indexing: b.Indexing || null,
+  national_international: b.National_International || null,
+  doi: b.DOI_of_paper || null,
+  faculty_name: b.Faculty_name || null,
+  publisher: b.Name_of_the_publisher || null,
+  vol_issue_pg: b.Vol_Issue_Pg_ISBN || null,
+  department: null,
+});
 
 // Get all publications with filters and pagination
 const getAllPublications = async (req, res, next) => {
@@ -6,8 +64,6 @@ const getAllPublications = async (req, res, next) => {
     const {
       year,
       publication_type,
-      department,
-      indexing,
       search,
       page = 1,
       limit = 10
@@ -15,56 +71,47 @@ const getAllPublications = async (req, res, next) => {
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+
+    const searchWhere = search
+      ? {
+          OR: [
+            { Title_of_the_paper: { contains: search, mode: 'insensitive' } },
+            { Name_of_authors: { contains: search, mode: 'insensitive' } },
+            { Faculty_name: { contains: search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
+    const items = [];
+
+    if (!publication_type || publication_type === 'journal') {
+      const rows = await prisma.journal.findMany({ where: searchWhere });
+      rows.forEach((r) => items.push(mapJournal(r)));
+    }
+    if (!publication_type || publication_type === 'conference') {
+      const rows = await prisma.conference.findMany({ where: searchWhere });
+      rows.forEach((r) => items.push(mapConference(r)));
+    }
+    if (!publication_type || publication_type === 'bookchapter') {
+      const rows = await prisma.bookchapter.findMany({ where: searchWhere });
+      rows.forEach((r) => items.push(mapBookchapter(r)));
+    }
+
+    // Filter by year if specified
+    const filtered = year
+      ? items.filter((i) => i.year === parseInt(year))
+      : items;
+
+    // Sort by year desc
+    filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
+
+    const total = filtered.length;
     const offset = (pageNum - 1) * limitNum;
-
-    let query = `
-      SELECT *
-      FROM publications
-      WHERE 1=1
-    `;
-
-    const params = [];
-    let paramIndex = 1;
-
-    if (year) {
-      query += ` AND year = $${paramIndex++}`;
-      params.push(parseInt(year));
-    }
-
-    if (publication_type) {
-      query += ` AND publication_type = $${paramIndex++}`;
-      params.push(publication_type);
-    }
-
-    if (department) {
-      query += ` AND department ILIKE $${paramIndex++}`;
-      params.push(`%${department}%`);
-    }
-
-    if (indexing) {
-      query += ` AND indexing = $${paramIndex++}`;
-      params.push(indexing);
-    }
-
-    if (search) {
-      query += ` AND title ILIKE $${paramIndex++}`;
-      params.push(`%${search}%`);
-    }
-
-    // Count
-    const countQuery = `SELECT COUNT(*)::int FROM (${query}) as total`;
-    const countResult = await pool.query(countQuery, params);
-    const total = countResult.rows[0].count;
-
-    // Pagination
-    query += ` ORDER BY year DESC, created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
-    params.push(limitNum, offset);
-
-    const result = await pool.query(query, params);
+    const paginated = filtered.slice(offset, offset + limitNum);
 
     res.json({
       success: true,
-      data: result.rows,
+      data: paginated,
       pagination: {
         total,
         page: pageNum,
@@ -78,143 +125,55 @@ const getAllPublications = async (req, res, next) => {
   }
 };
 
-// Get single publication
+// Get single publication by encoded ID (e.g. "journal-5", "conference-3", "bookchapter-2")
 const getPublicationById = async (req, res, next) => {
   try {
-    const id = Number(req.params.id);
+    const rawId = req.params.id;
 
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid publication ID'
-      });
+    // Parse type-prefixed ID
+    const match = rawId.match(/^(journal|conference|bookchapter)-(\d+)$/);
+    if (!match) {
+      return res.status(400).json({ success: false, message: 'Invalid publication ID' });
     }
 
-    const result = await pool.query(
-      `SELECT * FROM publications WHERE id = $1`,
-      [id]
-    );
+    const [, type, numStr] = match;
+    const num = parseInt(numStr);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Publication not found'
-      });
+    let pub = null;
+    if (type === 'journal') {
+      const row = await prisma.journal.findUnique({ where: { S_No: num } });
+      if (row) pub = mapJournal(row);
+    } else if (type === 'conference') {
+      const row = await prisma.conference.findUnique({ where: { S_No: num } });
+      if (row) pub = mapConference(row);
+    } else {
+      const row = await prisma.bookchapter.findUnique({ where: { S_No: num } });
+      if (row) pub = mapBookchapter(row);
     }
 
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
+    if (!pub) {
+      return res.status(404).json({ success: false, message: 'Publication not found' });
+    }
 
+    res.json({ success: true, data: pub });
   } catch (error) {
     next(error);
   }
 };
 
-// Create publication
+// Create publication — not supported with the new data model
 const createPublication = async (req, res, next) => {
-  try {
-    const {
-      title,
-      journal_name,
-      publication_type,
-      year,
-      indexing,
-      national_international,
-      faculty_id,
-      pdf_url
-    } = req.body;
-
-    const result = await pool.query(
-      `INSERT INTO publications 
-       (title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, req.user?.id || null]
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Publication created successfully',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    next(error);
-  }
+  return res.status(503).json({ success: false, message: 'Direct publication creation is not supported' });
 };
 
-// Update publication
+// Update publication — not supported with the new data model
 const updatePublication = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const {
-      title,
-      journal_name,
-      publication_type,
-      year,
-      indexing,
-      national_international,
-      faculty_id,
-      pdf_url
-    } = req.body;
-
-    const result = await pool.query(
-      `UPDATE publications
-       SET title = COALESCE($1, title),
-           journal_name = COALESCE($2, journal_name),
-           publication_type = COALESCE($3, publication_type),
-           year = COALESCE($4, year),
-           indexing = COALESCE($5, indexing),
-           national_international = COALESCE($6, national_international),
-           faculty_id = COALESCE($7, faculty_id),
-           pdf_url = COALESCE($8, pdf_url),
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $9
-       RETURNING *`,
-      [title, journal_name, publication_type, year, indexing, national_international, faculty_id, pdf_url, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Publication not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Publication updated successfully',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    next(error);
-  }
+  return res.status(503).json({ success: false, message: 'Direct publication update is not supported' });
 };
 
-// Delete publication
+// Delete publication — not supported with the new data model
 const deletePublication = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const result = await pool.query(
-      'DELETE FROM publications WHERE id = $1 RETURNING *',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Publication not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Publication deleted successfully'
-    });
-  } catch (error) {
-    next(error);
-  }
+  return res.status(503).json({ success: false, message: 'Direct publication deletion is not supported' });
 };
 
 module.exports = {

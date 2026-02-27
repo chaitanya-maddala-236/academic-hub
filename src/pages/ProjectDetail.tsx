@@ -164,7 +164,9 @@ export default function ProjectDetail() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
           <InfoCard label="Department" value={project.department} />
           <InfoCard label="Principal Investigator" value={project.principalInvestigator} />
-          <InfoCard label="Co-PI" value={project.coPrincipalInvestigator} />
+          {project.coPrincipalInvestigator && (
+            <InfoCard label="Co-PI" value={project.coPrincipalInvestigator} />
+          )}
           <InfoCard label="File Number" value={project.fileNumber} />
         </div>
       </div>

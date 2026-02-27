@@ -45,6 +45,8 @@ export default function PublicationDetail() {
   }
 
   const indexingTags: string[] = pub.indexing ? (Array.isArray(pub.indexing) ? pub.indexing : [pub.indexing]) : [];
+  const venueLabel = pub.publication_type === 'journal' ? 'Journal' : pub.publication_type === 'conference' ? 'Conference' : 'Book/Chapter';
+  const venueName = pub.journal_name || null;
 
   return (
     <motion.div
@@ -82,13 +84,13 @@ export default function PublicationDetail() {
                 <Calendar className="h-3 w-3" /> {pub.year}
               </Badge>
             )}
-            {pub.journal_name && (
+            {venueName && (
               <Badge className="flex items-center gap-1">
-                <BookOpen className="h-3 w-3" /> {pub.journal_name}
+                <BookOpen className="h-3 w-3" /> {venueName}
               </Badge>
             )}
             {pub.publication_type && (
-              <Badge variant="secondary" className="capitalize">{pub.publication_type}</Badge>
+              <Badge variant="secondary" className="capitalize">{venueLabel}</Badge>
             )}
             {indexingTags.map((tag: string) => (
               <Badge key={tag} variant="outline" className="text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50">
@@ -103,9 +105,6 @@ export default function PublicationDetail() {
           {pub.faculty_name && (
             <MetaField icon={User} label="Faculty" value={pub.faculty_name} />
           )}
-          {pub.department && (
-            <MetaField icon={Building} label="Department" value={pub.department} />
-          )}
           {pub.authors && (
             <MetaField icon={User} label="Authors" value={pub.authors} />
           )}
@@ -114,6 +113,12 @@ export default function PublicationDetail() {
           )}
           {pub.doi && (
             <MetaField icon={ExternalLink} label="DOI" value={pub.doi} />
+          )}
+          {pub.vol_issue_pg && (
+            <MetaField icon={BookOpen} label="Volume / Issue / Pages" value={pub.vol_issue_pg} />
+          )}
+          {pub.publisher && (
+            <MetaField icon={Building} label="Publisher" value={pub.publisher} />
           )}
         </div>
       </div>

@@ -7,11 +7,9 @@ const getAllFaculty = async (req, res, next) => {
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT f.*, 
-        COUNT(DISTINCT p.id) as publications_count,
+      SELECT f.*,
         COUNT(DISTINCT pa.id) as patents_count
       FROM faculty f
-      LEFT JOIN publications p ON f.id = p.faculty_id
       LEFT JOIN patents pa ON f.id = pa.faculty_id
       WHERE 1=1
     `;
@@ -33,12 +31,8 @@ const getAllFaculty = async (req, res, next) => {
 
     query += ' GROUP BY f.id';
 
-    // Apply sorting
-    if (sortByPublications === 'true') {
-      query += ' ORDER BY publications_count DESC';
-    } else {
-      query += ' ORDER BY f.created_at DESC';
-    }
+    // publications_count is no longer available; default to created_at ordering
+    query += ' ORDER BY f.created_at DESC';
 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM (${query}) as total`;
@@ -86,31 +80,33 @@ const getFacultyById = async (req, res, next) => {
 
     const faculty = facultyResult.rows[0];
 
-    // Get publications
-    const publicationsResult = await pool.query(
-      'SELECT * FROM publications WHERE faculty_id = $1 ORDER BY year DESC',
-      [id]
-    );
-
     // Get patents
-    const patentsResult = await pool.query(
-      'SELECT * FROM patents WHERE faculty_id = $1 ORDER BY filing_date DESC',
-      [id]
-    );
+    let patents = [];
+    try {
+      const patentsResult = await pool.query(
+        'SELECT * FROM patents WHERE faculty_id = $1 ORDER BY filing_date DESC',
+        [id]
+      );
+      patents = patentsResult.rows;
+    } catch (_) { /* table may not exist */ }
 
     // Get projects (matching by principal_investigator name)
-    const projectsResult = await pool.query(
-      'SELECT * FROM funded_projects WHERE principal_investigator = $1 ORDER BY start_date DESC',
-      [faculty.name]
-    );
+    let projects = [];
+    try {
+      const projectsResult = await pool.query(
+        'SELECT * FROM funded_projects WHERE principal_investigator = $1 ORDER BY start_date DESC',
+        [faculty.name]
+      );
+      projects = projectsResult.rows;
+    } catch (_) { /* table may not exist */ }
 
     res.json({
       success: true,
       data: {
         ...faculty,
-        publications: publicationsResult.rows,
-        patents: patentsResult.rows,
-        projects: projectsResult.rows
+        publications: [],
+        patents,
+        projects
       }
     });
   } catch (error) {
