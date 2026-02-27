@@ -144,7 +144,13 @@ export default function ResearchCard({ item, onProjectClick }: ResearchCardProps
             <Eye size={11} /> View Details
           </Link>
         ) : (
-          <span className="text-xs text-green-600 ml-auto">Click to expand →</span>
+          <Link
+            to={`/research/project/${item.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs text-green-600 hover:underline ml-auto flex items-center gap-1"
+          >
+            <Eye size={11} /> View Details
+          </Link>
         )}
       </div>
     </motion.div>
