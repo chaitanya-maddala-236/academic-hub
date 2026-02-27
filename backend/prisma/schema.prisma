@@ -18,7 +18,6 @@ model journal {
   Name_of_the_Journal    String? @map("Name of the Journal") @db.VarChar(512)
   National_International String? @map("National/ International") @db.VarChar(512)
   Date_of_Publication    String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Vol_Issue_Pg_ISBN      String? @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Nnmber") @db.VarChar(512)
   Indexing               String? @db.VarChar(512)
   Name_of_the_publisher  String? @map("Name of the publisher") @db.VarChar(512)
   DOI_of_paper           String? @map("DOI of paper") @db.VarChar(512)
