@@ -133,9 +133,9 @@ const getDashboardStats = async () => {
     projectsByYear,
     departmentChart,
     statusDistribution: [
-      { name: 'Ongoing', value: ongoingCount, color: '#16A34A' },
-      { name: 'Completed', value: completedCount, color: '#6B7280' },
-      { name: 'Upcoming', value: upcoming > 0 ? upcoming : 0, color: '#F59E0B' },
+      { name: 'Ongoing', value: ongoingCount, color: '#3B82F6' },
+      { name: 'Completed', value: completedCount, color: '#10B981' },
+      { name: 'Upcoming', value: upcoming > 0 ? upcoming : 0, color: '#A855F7' },
     ],
   };
 };

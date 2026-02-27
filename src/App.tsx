@@ -26,6 +26,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ResearchDetail from "./pages/ResearchDetail";
 import ResearchDashboard from "./features/research/pages/ResearchDashboard";
+import Consultancy from "./pages/Consultancy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
                     <Route path="/research-labs" element={<ResearchLabs />} />
                     <Route path="/research" element={<ResearchDashboard />} />
                     <Route path="/research/:type/:id" element={<ResearchDetail />} />
+                    <Route path="/consultancy" element={<Consultancy />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </MainLayout>

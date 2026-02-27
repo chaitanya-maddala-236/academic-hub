@@ -1,256 +1,178 @@
 const pool = require('../config/db');
 
-// Get all consultancy records
+// GET /api/consultancy/metrics
+const getMetrics = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*)::int                                              AS total_projects,
+        COALESCE(SUM(estimated_amount_lakhs), 0)::float           AS total_estimated,
+        COALESCE(SUM(received_amount_lakhs), 0)::float            AS total_received,
+        COUNT(*) FILTER (WHERE LOWER(status) = 'active')::int     AS active_projects,
+        COUNT(*) FILTER (WHERE LOWER(status) = 'completed')::int  AS completed_projects,
+        COUNT(*) FILTER (WHERE LOWER(status) = 'pending')::int    AS pending_projects
+      FROM ongoing_consultancy
+    `);
+    const row = result.rows[0];
+    res.json({
+      success: true,
+      data: {
+        totalProjects:      row.total_projects,
+        totalEstimated:     row.total_estimated,
+        totalReceived:      row.total_received,
+        activeProjects:     row.active_projects,
+        completedProjects:  row.completed_projects,
+        pendingProjects:    row.pending_projects,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching consultancy metrics:', error);
+    res.status(500).json({ success: false, message: 'Error fetching consultancy metrics', error: error.message });
+  }
+};
+
+// GET /api/consultancy
 const getAllConsultancy = async (req, res) => {
   try {
-    const { department, status, faculty_id, year, page = 1, limit = 10 } = req.query;
+    const { department, status, search, page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
-    
-    let queryText = `
-      SELECT c.*, f.name as faculty_name, f.department as faculty_department
-      FROM consultancy c
-      LEFT JOIN faculty f ON c.faculty_id = f.id
-      WHERE 1=1
-    `;
-    let countQueryText = `
-      SELECT COUNT(*)
-      FROM consultancy c
-      LEFT JOIN faculty f ON c.faculty_id = f.id
-      WHERE 1=1
-    `;
-    const queryParams = [];
-    let paramCount = 1;
 
-    if (department) {
-      const condition = ` AND c.department = $${paramCount}`;
-      queryText += condition;
-      countQueryText += condition;
-      queryParams.push(department);
-      paramCount++;
+    const conditions = ['1=1'];
+    const params = [];
+    let idx = 1;
+
+    if (department) { conditions.push(`department ILIKE $${idx++}`); params.push(`%${department}%`); }
+    if (status)     { conditions.push(`LOWER(status) = $${idx++}`); params.push(status.toLowerCase()); }
+    if (search) {
+      const s = search.replace(/[%_\\]/g, '\\$&');
+      conditions.push(`(project_title ILIKE $${idx} OR principal_investigator ILIKE $${idx} OR department ILIKE $${idx})`);
+      params.push(`%${s}%`);
+      idx++;
     }
 
-    if (status) {
-      const condition = ` AND c.status = $${paramCount}`;
-      queryText += condition;
-      countQueryText += condition;
-      queryParams.push(status);
-      paramCount++;
-    }
+    const where = conditions.join(' AND ');
 
-    if (faculty_id) {
-      const condition = ` AND c.faculty_id = $${paramCount}`;
-      queryText += condition;
-      countQueryText += condition;
-      queryParams.push(faculty_id);
-      paramCount++;
-    }
+    const countResult = await pool.query(`SELECT COUNT(*)::int AS total FROM ongoing_consultancy WHERE ${where}`, params);
+    const total = countResult.rows[0].total;
 
-    if (year) {
-      const condition = ` AND EXTRACT(YEAR FROM c.start_date) = $${paramCount}`;
-      queryText += condition;
-      countQueryText += condition;
-      queryParams.push(year);
-      paramCount++;
-    }
-
-    // Get total count
-    const countResult = await pool.query(countQueryText, queryParams);
-    const total = parseInt(countResult.rows[0].count);
-
-    // Get paginated results
-    queryText += ` ORDER BY c.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
-    queryParams.push(limit, offset);
-
-    const result = await pool.query(queryText, queryParams);
+    const dataResult = await pool.query(
+      `SELECT * FROM ongoing_consultancy WHERE ${where} ORDER BY created_at DESC LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, limit, offset]
+    );
 
     res.json({
       success: true,
-      data: result.rows,
-      pagination: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / limit)
-      }
+      data: dataResult.rows,
+      pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
     console.error('Error fetching consultancy records:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching consultancy records',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error fetching consultancy records', error: error.message });
   }
 };
 
-// Get single consultancy record
+// GET /api/consultancy/:id
 const getConsultancyById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      `SELECT c.*, f.name as faculty_name, f.department as faculty_department
-       FROM consultancy c
-       LEFT JOIN faculty f ON c.faculty_id = f.id
-       WHERE c.id = $1`,
-      [id]
-    );
-
+    const result = await pool.query('SELECT * FROM ongoing_consultancy WHERE id = $1', [id]);
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Consultancy record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Consultancy record not found' });
     }
-
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
+    res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Error fetching consultancy record:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching consultancy record',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error fetching consultancy record', error: error.message });
   }
 };
 
-// Create consultancy record
+// POST /api/consultancy
 const createConsultancy = async (req, res) => {
   try {
     const {
-      title,
-      faculty_id,
-      client_name,
-      department,
-      amount_earned,
-      start_date,
-      end_date,
-      description,
-      status
+      project_title, principal_investigator, co_investigators,
+      department, institute_level, estimated_amount_lakhs,
+      received_amount_lakhs, remarks, status,
     } = req.body;
 
-    // Validate required fields
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        message: 'Title is required'
-      });
+    if (!project_title) {
+      return res.status(400).json({ success: false, message: 'project_title is required' });
     }
 
     const result = await pool.query(
-      `INSERT INTO consultancy 
-       (title, faculty_id, client_name, department, amount_earned, start_date, end_date, description, status, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO ongoing_consultancy
+         (project_title, principal_investigator, co_investigators, department,
+          institute_level, estimated_amount_lakhs, received_amount_lakhs, remarks, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
-      [title, faculty_id, client_name, department, amount_earned, start_date, end_date, description, status, req.user.id]
+      [project_title, principal_investigator, co_investigators, department,
+       institute_level, estimated_amount_lakhs, received_amount_lakhs, remarks, status]
     );
 
-    res.status(201).json({
-      success: true,
-      message: 'Consultancy record created successfully',
-      data: result.rows[0]
-    });
+    res.status(201).json({ success: true, message: 'Consultancy record created successfully', data: result.rows[0] });
   } catch (error) {
     console.error('Error creating consultancy record:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error creating consultancy record',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error creating consultancy record', error: error.message });
   }
 };
 
-// Update consultancy record
+// PUT /api/consultancy/:id
 const updateConsultancy = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      title,
-      faculty_id,
-      client_name,
-      department,
-      amount_earned,
-      start_date,
-      end_date,
-      description,
-      status
+      project_title, principal_investigator, co_investigators,
+      department, institute_level, estimated_amount_lakhs,
+      received_amount_lakhs, remarks, status,
     } = req.body;
 
     const result = await pool.query(
-      `UPDATE consultancy 
-       SET title = COALESCE($1, title),
-           faculty_id = COALESCE($2, faculty_id),
-           client_name = COALESCE($3, client_name),
-           department = COALESCE($4, department),
-           amount_earned = COALESCE($5, amount_earned),
-           start_date = COALESCE($6, start_date),
-           end_date = COALESCE($7, end_date),
-           description = COALESCE($8, description),
-           status = COALESCE($9, status),
-           updated_at = CURRENT_TIMESTAMP
+      `UPDATE ongoing_consultancy SET
+         project_title           = COALESCE($1,  project_title),
+         principal_investigator  = COALESCE($2,  principal_investigator),
+         co_investigators        = COALESCE($3,  co_investigators),
+         department              = COALESCE($4,  department),
+         institute_level         = COALESCE($5,  institute_level),
+         estimated_amount_lakhs  = COALESCE($6,  estimated_amount_lakhs),
+         received_amount_lakhs   = COALESCE($7,  received_amount_lakhs),
+         remarks                 = COALESCE($8,  remarks),
+         status                  = COALESCE($9,  status)
        WHERE id = $10
        RETURNING *`,
-      [title, faculty_id, client_name, department, amount_earned, start_date, end_date, description, status, id]
+      [project_title, principal_investigator, co_investigators, department,
+       institute_level, estimated_amount_lakhs, received_amount_lakhs, remarks, status, id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Consultancy record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Consultancy record not found' });
     }
-
-    res.json({
-      success: true,
-      message: 'Consultancy record updated successfully',
-      data: result.rows[0]
-    });
+    res.json({ success: true, message: 'Consultancy record updated successfully', data: result.rows[0] });
   } catch (error) {
     console.error('Error updating consultancy record:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating consultancy record',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error updating consultancy record', error: error.message });
   }
 };
 
-// Delete consultancy record
+// DELETE /api/consultancy/:id
 const deleteConsultancy = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await pool.query(
-      'DELETE FROM consultancy WHERE id = $1 RETURNING *',
-      [id]
-    );
-
+    const result = await pool.query('DELETE FROM ongoing_consultancy WHERE id = $1 RETURNING *', [id]);
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Consultancy record not found'
-      });
+      return res.status(404).json({ success: false, message: 'Consultancy record not found' });
     }
-
-    res.json({
-      success: true,
-      message: 'Consultancy record deleted successfully'
-    });
+    res.json({ success: true, message: 'Consultancy record deleted successfully' });
   } catch (error) {
     console.error('Error deleting consultancy record:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error deleting consultancy record',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error deleting consultancy record', error: error.message });
   }
 };
 
 module.exports = {
+  getMetrics,
   getAllConsultancy,
   getConsultancyById,
   createConsultancy,
   updateConsultancy,
-  deleteConsultancy
+  deleteConsultancy,
 };
