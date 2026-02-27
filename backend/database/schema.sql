@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS teaching_materials CASCADE;
 DROP TABLE IF EXISTS awards CASCADE;
 DROP TABLE IF EXISTS student_projects CASCADE;
 DROP TABLE IF EXISTS consultancy CASCADE;
+DROP TABLE IF EXISTS ongoing_consultancy CASCADE;
 DROP TABLE IF EXISTS publications CASCADE;
 DROP TABLE IF EXISTS patents CASCADE;
 DROP TABLE IF EXISTS ip_assets CASCADE;
@@ -16,6 +17,9 @@ DROP TABLE IF EXISTS funded_projects CASCADE;
 DROP TABLE IF EXISTS research_labs CASCADE;
 DROP TABLE IF EXISTS faculty CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS bookchapter CASCADE;
+DROP TABLE IF EXISTS conference CASCADE;
+DROP TABLE IF EXISTS journal CASCADE;
 
 -- Users table (for authentication)
 CREATE TABLE users (
@@ -224,6 +228,71 @@ CREATE INDEX idx_awards_faculty ON awards(faculty_id);
 CREATE INDEX idx_awards_year ON awards(year);
 CREATE INDEX idx_student_projects_faculty ON student_projects(faculty_id);
 CREATE INDEX idx_student_projects_type ON student_projects(project_type);
+
+-- Journal table (publication data — mirrors Prisma `journal` model)
+CREATE TABLE journal (
+  "S.No."                                              INTEGER      PRIMARY KEY,
+  "Faculty_name"                                       VARCHAR(512),
+  "Name of author/s"                                   VARCHAR(512),
+  "Title of the paper"                                 VARCHAR(512),
+  "Name of the Journal"                                VARCHAR(512),
+  "National/ International"                            VARCHAR(512),
+  "Date of Publication (DDMMYYYY)"                     VARCHAR(512),
+  "Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number"     VARCHAR(512),
+  "Indexing"                                           VARCHAR(512),
+  "Name of the publisher"                              VARCHAR(512),
+  "DOI of paper"                                       VARCHAR(512)
+);
+
+-- Conference table (publication data — mirrors Prisma `conference` model)
+CREATE TABLE conference (
+  "S.No."                                              INTEGER      PRIMARY KEY,
+  "Faculty_name"                                       VARCHAR(512),
+  "Name of author/s"                                   VARCHAR(512),
+  "Title of the paper"                                 VARCHAR(512),
+  "Name of the Conference"                             VARCHAR(512),
+  "National/ International"                            VARCHAR(512),
+  "Date of Publication (DDMMYYYY)"                     VARCHAR(512),
+  "Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number"     VARCHAR(512),
+  "Indexing"                                           VARCHAR(512),
+  "Name of the publisher"                              VARCHAR(512),
+  "DOI of paper"                                       VARCHAR(512)
+);
+
+-- Book chapter table (publication data — mirrors Prisma `bookchapter` model)
+CREATE TABLE bookchapter (
+  "S.No."                                              INTEGER      PRIMARY KEY,
+  "Faculty_name"                                       VARCHAR(512),
+  "Journal/ Conference/Book Chapter"                   VARCHAR(512),
+  "Name of author/s"                                   VARCHAR(512),
+  "Title of the paper"                                 VARCHAR(512),
+  "Name of the Journal/ Conference"                    VARCHAR(512),
+  "National/ International"                            VARCHAR(512),
+  "Date of Publication (DDMMYYYY)"                     VARCHAR(512),
+  "Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number"     VARCHAR(512),
+  "Indexing"                                           VARCHAR(512),
+  "Name of the publisher"                              VARCHAR(512),
+  "DOI of paper"                                       VARCHAR(512)
+);
+
+-- Ongoing consultancy table (used by backend/controllers/consultancy.controller.js)
+CREATE TABLE ongoing_consultancy (
+  id                      SERIAL         PRIMARY KEY,
+  project_title           VARCHAR(512),
+  principal_investigator  VARCHAR(512),
+  co_investigators        TEXT,
+  department              VARCHAR(200),
+  institute_level         VARCHAR(200),
+  estimated_amount_lakhs  NUMERIC(12, 2),
+  received_amount_lakhs   NUMERIC(12, 2),
+  remarks                 TEXT,
+  status                  VARCHAR(50)    DEFAULT 'active',
+  created_at              TIMESTAMP      DEFAULT CURRENT_TIMESTAMP,
+  updated_at              TIMESTAMP      DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_ongoing_consultancy_status     ON ongoing_consultancy (status);
+CREATE INDEX idx_ongoing_consultancy_department ON ongoing_consultancy (department);
 
 -- Insert default users with pre-generated password hashes
 -- Password hashes were generated using bcrypt with 10 salt rounds
