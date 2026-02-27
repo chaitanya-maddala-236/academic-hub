@@ -1,16 +1,5 @@
 const prisma = require('../src/lib/prisma');
-
-/**
- * Helper: extract year from a date string.
- * Date_of_Publication is stored as DDMMYYYY (e.g. "01012023") or similar formats.
- */
-const extractYear = (dateStr) => {
-  if (!dateStr) return null;
-  const cleaned = dateStr.replace(/[^0-9]/g, '');
-  if (cleaned.length >= 8) return parseInt(cleaned.slice(-4));
-  if (/^\d{4}/.test(dateStr)) return parseInt(dateStr.slice(0, 4));
-  return null;
-};
+const { extractYear } = require('../src/lib/dateUtils');
 
 /**
  * Map a raw journal row to the standard publication shape.

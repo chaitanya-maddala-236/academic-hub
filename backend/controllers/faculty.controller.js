@@ -31,12 +31,8 @@ const getAllFaculty = async (req, res, next) => {
 
     query += ' GROUP BY f.id';
 
-    // Apply sorting
-    if (sortByPublications === 'true') {
-      query += ' ORDER BY f.name ASC';
-    } else {
-      query += ' ORDER BY f.created_at DESC';
-    }
+    // publications_count is no longer available; default to created_at ordering
+    query += ' ORDER BY f.created_at DESC';
 
     // Get total count
     const countQuery = `SELECT COUNT(*) FROM (${query}) as total`;

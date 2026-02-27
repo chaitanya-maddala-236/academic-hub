@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const prisma = require('../src/lib/prisma');
+const { extractYear } = require('../src/lib/dateUtils');
 
 // Helper: count publications from journal + conference + bookchapter tables
 const countPublications = async () => {
@@ -83,14 +84,6 @@ const getPublicationsPerYear = async (req, res, next) => {
     const currentYear = new Date().getFullYear();
     const { years = 5 } = req.query;
     const cutoffYear = currentYear - parseInt(years);
-
-    const extractYear = (dateStr) => {
-      if (!dateStr) return null;
-      const cleaned = dateStr.replace(/[^0-9]/g, '');
-      if (cleaned.length >= 8) return parseInt(cleaned.slice(-4));
-      if (/^\d{4}/.test(dateStr)) return parseInt(dateStr.slice(0, 4));
-      return null;
-    };
 
     const [journals, conferences, bookchapters] = await Promise.all([
       prisma.journal.findMany({ select: { Date_of_Publication: true } }),

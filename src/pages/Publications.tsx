@@ -324,6 +324,12 @@ export default function Publications() {
   );
 }
 
+function getVenueLabel(pub: any): string {
+  if (pub.journal) return "Journal";
+  if (pub.conference) return "Conference";
+  return "Book Chapter";
+}
+
 function PublicationItem({ pub, index }: { pub: any; index: number }) {
   return (
     <div className="rounded-xl border bg-card shadow-sm hover:shadow-md transition-shadow p-5">
@@ -342,7 +348,7 @@ function PublicationItem({ pub, index }: { pub: any; index: number }) {
               <p className="font-medium text-foreground line-clamp-1">{pub.authors ?? "—"}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">{pub.journal ? "Journal" : pub.conference ? "Conference" : "Book Chapter"}</span>
+              <span className="text-muted-foreground">{getVenueLabel(pub)}</span>
               <p className="font-medium text-foreground line-clamp-1">{pub.journal || pub.conference || pub.bookchapter || "—"}</p>
             </div>
             <div>
