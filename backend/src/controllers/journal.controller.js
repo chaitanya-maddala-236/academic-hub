@@ -8,7 +8,6 @@ const journalSchema = z.object({
   Name_of_the_Journal: z.string().max(512).optional().nullable(),
   National_International: z.string().max(512).optional().nullable(),
   Date_of_Publication: z.string().max(512).optional().nullable(),
-  Vol_Issue_Pg_ISBN: z.string().max(512).optional().nullable(),
   Indexing: z.string().max(512).optional().nullable(),
   Name_of_the_publisher: z.string().max(512).optional().nullable(),
   DOI_of_paper: z.string().max(512).optional().nullable(),
