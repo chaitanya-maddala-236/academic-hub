@@ -16,7 +16,6 @@ const mapJournal = (j) => ({
   doi: j.DOI_of_paper || null,
   faculty_name: j.Faculty_name || null,
   publisher: j.Name_of_the_publisher || null,
-  vol_issue_pg: j.Vol_Issue_Pg_ISBN || null,
   department: null,
 });
 
@@ -70,7 +69,7 @@ const getAllPublications = async (req, res, next) => {
     } = req.query;
 
     const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit)));
 
     const searchWhere = search
       ? {
