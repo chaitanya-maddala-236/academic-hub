@@ -36,13 +36,13 @@ export function useResearch(): UseResearchResult {
   const [department, setDepartmentState] = useState('');
   const [page, setPageState] = useState(1);
 
-  // Fetch all items once (limit=1000 for client-side filtering)
+  // Fetch project items only (limit=1000 for client-side filtering)
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
     unifiedResearchApi
-      .getResearch({ limit: 1000 })
+      .getResearch({ type: 'project', limit: 1000 })
       .then((res) => {
         if (!cancelled) setAllItems(res.data ?? []);
       })

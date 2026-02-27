@@ -69,7 +69,7 @@ const getAllPublications = async (req, res, next) => {
     } = req.query;
 
     const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit)));
 
     const searchWhere = search
       ? {
