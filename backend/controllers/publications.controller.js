@@ -14,7 +14,7 @@ const mapJournal = (j) => ({
   indexing: j.Indexing || null,
   national_international: j.National_International || null,
   doi: j.DOI_of_paper || null,
-  faculty_name: j.Faculty_name || null,
+  faculty_name: null,
   publisher: j.Name_of_the_publisher || null,
   vol_issue_pg: j.Vol_Issue_Pg_ISBN || null,
   department: null,
@@ -33,7 +33,7 @@ const mapConference = (c) => ({
   indexing: c.Indexing || null,
   national_international: c.National_International || null,
   doi: c.DOI_of_paper || null,
-  faculty_name: c.Faculty_name || null,
+  faculty_name: null,
   publisher: c.Name_of_the_publisher || null,
   vol_issue_pg: c.Vol_Issue_Pg_ISBN || null,
   department: null,
@@ -52,7 +52,7 @@ const mapBookchapter = (b) => ({
   indexing: b.Indexing || null,
   national_international: b.National_International || null,
   doi: b.DOI_of_paper || null,
-  faculty_name: b.Faculty_name || null,
+  faculty_name: null,
   publisher: b.Name_of_the_publisher || null,
   vol_issue_pg: b.Vol_Issue_Pg_ISBN || null,
   department: null,
@@ -77,7 +77,6 @@ const getAllPublications = async (req, res, next) => {
           OR: [
             { Title_of_the_paper: { contains: search, mode: 'insensitive' } },
             { Name_of_authors: { contains: search, mode: 'insensitive' } },
-            { Faculty_name: { contains: search, mode: 'insensitive' } },
           ],
         }
       : {};

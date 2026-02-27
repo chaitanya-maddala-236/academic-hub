@@ -2,7 +2,6 @@ const prisma = require('../lib/prisma');
 const { z } = require('zod');
 
 const journalSchema = z.object({
-  Faculty_name: z.string().max(512).optional().nullable(),
   Name_of_authors: z.string().max(512).optional().nullable(),
   Title_of_the_paper: z.string().max(512).optional().nullable(),
   Name_of_the_Journal: z.string().max(512).optional().nullable(),
@@ -36,13 +35,11 @@ const getAll = async (req, res, next) => {
       where.OR = [
         { Title_of_the_paper: { contains: s, mode: 'insensitive' } },
         { Name_of_authors: { contains: s, mode: 'insensitive' } },
-        { Faculty_name: { contains: s, mode: 'insensitive' } },
         { Name_of_the_Journal: { contains: s, mode: 'insensitive' } },
       ];
     }
     if (indexing) where.Indexing = { contains: indexing, mode: 'insensitive' };
     if (scope) where.National_International = { contains: scope, mode: 'insensitive' };
-    if (faculty) where.Faculty_name = { contains: faculty, mode: 'insensitive' };
 
     const [total, rows] = await Promise.all([
       prisma.journal.count({ where }),

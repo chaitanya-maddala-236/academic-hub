@@ -12,7 +12,6 @@ datasource db {
 
 model journal {
   S_No                   Int     @id @map("S.No.")
-  Faculty_name           String? @db.VarChar(512)
   Name_of_authors        String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper     String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Journal    String? @map("Name of the Journal") @db.VarChar(512)
@@ -26,7 +25,6 @@ model journal {
 
 model conference {
   S_No                     Int     @id @map("S.No.")
-  Faculty_name             String? @db.VarChar(512)
   Name_of_authors          String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper       String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Conference   String? @map("Name of the Conference") @db.VarChar(512)
@@ -40,7 +38,6 @@ model conference {
 
 model bookchapter {
   S_No                            Int     @id @map("S.No.")
-  Faculty_name                    String? @db.VarChar(512)
   Journal_Conference_Book         String? @map("Journal/ Conference/Book Chapter") @db.VarChar(512)
   Name_of_authors                 String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper              String? @map("Title of the paper") @db.VarChar(512)

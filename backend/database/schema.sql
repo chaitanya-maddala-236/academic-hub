@@ -233,7 +233,6 @@ CREATE INDEX idx_student_projects_type ON student_projects(project_type);
 -- Journal table (publication data — mirrors Prisma `journal` model)
 CREATE TABLE journal (
   "S.No."                                              INTEGER      PRIMARY KEY,
-  "Faculty_name"                                       VARCHAR(512),
   "Name of author/s"                                   VARCHAR(512),
   "Title of the paper"                                 VARCHAR(512),
   "Name of the Journal"                                VARCHAR(512),
@@ -248,7 +247,6 @@ CREATE TABLE journal (
 -- Conference table (publication data — mirrors Prisma `conference` model)
 CREATE TABLE conference (
   "S.No."                                              INTEGER      PRIMARY KEY,
-  "Faculty_name"                                       VARCHAR(512),
   "Name of author/s"                                   VARCHAR(512),
   "Title of the paper"                                 VARCHAR(512),
   "Name of the Conference"                             VARCHAR(512),
@@ -263,7 +261,6 @@ CREATE TABLE conference (
 -- Book chapter table (publication data — mirrors Prisma `bookchapter` model)
 CREATE TABLE bookchapter (
   "S.No."                                              INTEGER      PRIMARY KEY,
-  "Faculty_name"                                       VARCHAR(512),
   "Journal/ Conference/Book Chapter"                   VARCHAR(512),
   "Name of author/s"                                   VARCHAR(512),
   "Title of the paper"                                 VARCHAR(512),
