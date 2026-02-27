@@ -47,7 +47,7 @@ export default function EditProject() {
         coPrincipalInvestigator: project.coPrincipalInvestigator ?? "",
         department: project.department ?? "",
         fundingAgency: project.fundingAgency ?? "",
-        startDate: project.startDate ? project.startDate.substring(0, 10) : "",
+        startDate: project.startDate ? new Date(project.startDate).toISOString().substring(0, 10) : "",
         sanctionedAmount: project.sanctionedAmount != null ? String(project.sanctionedAmount) : "",
         duration: project.duration ?? "",
         status: project.status ? project.status.toUpperCase() : "ONGOING",

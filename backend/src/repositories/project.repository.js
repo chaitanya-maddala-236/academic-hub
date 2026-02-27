@@ -147,7 +147,7 @@ const getDashboardStats = async () => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  // Projects by year
+  // Projects by year (from sanction_date)
   const yearMap = {};
   projects.forEach((p) => {
     if (p.startDate) {

@@ -3,8 +3,10 @@ const { extractYear } = require('../lib/dateUtils');
 
 /**
  * GET /api/v1/research
- * Returns combined publications from journal, conference, and bookchapter tables.
- * Query params: type (all|journal|conference|bookchapter), search, page, limit
+ * Returns combined publications (journal, conference, bookchapter) and
+ * researchProject records.
+ * Query params: type (all|publication|journal|conference|bookchapter|project),
+ *               search, page, limit
  */
 const getResearch = async (req, res, next) => {
   try {
@@ -17,7 +19,7 @@ const getResearch = async (req, res, next) => {
 
     const items = [];
 
-    const searchWhere = search
+    const pubSearchWhere = search
       ? {
           OR: [
             { Title_of_the_paper: { contains: search, mode: 'insensitive' } },
@@ -27,8 +29,11 @@ const getResearch = async (req, res, next) => {
         }
       : {};
 
-    if (type === 'all' || type === 'publication' || type === 'journal') {
-      const journals = await prisma.journal.findMany({ where: searchWhere });
+    const includePublications = type === 'all' || type === 'publication';
+    const includeProjects = type === 'all' || type === 'project';
+
+    if (includePublications || type === 'journal') {
+      const journals = await prisma.journal.findMany({ where: pubSearchWhere });
       journals.forEach((j) =>
         items.push({
           recordType: 'publication',
@@ -46,8 +51,8 @@ const getResearch = async (req, res, next) => {
       );
     }
 
-    if (type === 'all' || type === 'publication' || type === 'conference') {
-      const conferences = await prisma.conference.findMany({ where: searchWhere });
+    if (includePublications || type === 'conference') {
+      const conferences = await prisma.conference.findMany({ where: pubSearchWhere });
       conferences.forEach((c) =>
         items.push({
           recordType: 'publication',
@@ -65,8 +70,8 @@ const getResearch = async (req, res, next) => {
       );
     }
 
-    if (type === 'all' || type === 'publication' || type === 'bookchapter') {
-      const bookchapters = await prisma.bookchapter.findMany({ where: searchWhere });
+    if (includePublications || type === 'bookchapter') {
+      const bookchapters = await prisma.bookchapter.findMany({ where: pubSearchWhere });
       bookchapters.forEach((b) =>
         items.push({
           recordType: 'publication',
@@ -80,6 +85,37 @@ const getResearch = async (req, res, next) => {
           doi: b.DOI_of_paper || null,
           scope: b.National_International || null,
           facultyName: b.Faculty_name || null,
+        })
+      );
+    }
+
+    if (includeProjects) {
+      const projSearchWhere = search
+        ? {
+            OR: [
+              { title: { contains: search, mode: 'insensitive' } },
+              { principalInvestigator: { contains: search, mode: 'insensitive' } },
+              { fundingAgency: { contains: search, mode: 'insensitive' } },
+              { department: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {};
+
+      const projects = await prisma.researchProject.findMany({ where: projSearchWhere });
+      projects.forEach((p) =>
+        items.push({
+          recordType: 'project',
+          id: p.id,
+          title: p.title || null,
+          year: p.startDate ? p.startDate.getFullYear() : null,
+          department: p.department || null,
+          agency: p.fundingAgency || null,
+          pi: p.principalInvestigator || null,
+          coPi: p.coPrincipalInvestigator || null,
+          amount: p.sanctionedAmount ?? null,
+          status: p.status ? p.status.toLowerCase() : null,
+          startDate: p.startDate ? p.startDate.toISOString() : null,
+          createdAt: p.createdAt ? p.createdAt.toISOString() : null,
         })
       );
     }
@@ -108,14 +144,19 @@ const getResearch = async (req, res, next) => {
 
 /**
  * GET /api/v1/research/stats
- * Returns aggregate counts across journal, conference, bookchapter tables.
+ * Returns aggregate counts across journal, conference, bookchapter and
+ * researchProject tables.
  */
 const getResearchStats = async (req, res, next) => {
   try {
-    const [jCount, cCount, bCount] = await Promise.all([
+    const [jCount, cCount, bCount, totalProjects, activeProjects] = await Promise.all([
       prisma.journal.count(),
       prisma.conference.count(),
       prisma.bookchapter.count(),
+      prisma.researchProject.count(),
+      prisma.researchProject.count({
+        where: { status: { equals: 'ONGOING', mode: 'insensitive' } },
+      }),
     ]);
 
     res.json({
@@ -123,8 +164,8 @@ const getResearchStats = async (req, res, next) => {
       data: {
         totalPublications: jCount + cCount + bCount,
         indexedPublications: 0,
-        totalProjects: 0,
-        activeProjects: 0,
+        totalProjects,
+        activeProjects,
         departments: 0,
       },
     });
