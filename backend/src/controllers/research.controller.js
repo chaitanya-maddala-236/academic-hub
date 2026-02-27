@@ -24,6 +24,7 @@ const getResearch = async (req, res, next) => {
           OR: [
             { Title_of_the_paper: { contains: search, mode: 'insensitive' } },
             { Name_of_authors: { contains: search, mode: 'insensitive' } },
+            { Faculty_name: { contains: search, mode: 'insensitive' } },
           ],
         }
       : {};
@@ -45,7 +46,7 @@ const getResearch = async (req, res, next) => {
           indexing: j.Indexing ? [j.Indexing] : [],
           doi: j.DOI_of_paper || null,
           scope: j.National_International || null,
-          facultyName: null,
+          facultyName: j.Faculty_name || null,
         })
       );
     }
@@ -64,7 +65,7 @@ const getResearch = async (req, res, next) => {
           indexing: c.Indexing ? [c.Indexing] : [],
           doi: c.DOI_of_paper || null,
           scope: c.National_International || null,
-          facultyName: null,
+          facultyName: c.Faculty_name || null,
         })
       );
     }
@@ -83,7 +84,7 @@ const getResearch = async (req, res, next) => {
           indexing: b.Indexing ? [b.Indexing] : [],
           doi: b.DOI_of_paper || null,
           scope: b.National_International || null,
-          facultyName: null,
+          facultyName: b.Faculty_name || null,
         })
       );
     }
@@ -114,16 +115,12 @@ const getResearch = async (req, res, next) => {
           amount: p.sanctionedAmount ?? null,
           status: p.status ? p.status.toLowerCase() : null,
           startDate: p.startDate ? p.startDate.toISOString() : null,
-          endDate: p.endDate ? p.endDate.toISOString() : null,
-          outcomes: p.outcomes || null,
-          deliverables: p.deliverables || null,
-          teamMembers: p.teamMembers || null,
           createdAt: p.createdAt ? p.createdAt.toISOString() : null,
         })
       );
     }
 
-    // Sort publications by year desc; projects sort by startDate desc
+    // Sort by year desc
     items.sort((a, b) => {
       const ya = a.year ?? 0;
       const yb = b.year ?? 0;

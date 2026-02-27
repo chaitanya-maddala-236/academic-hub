@@ -65,21 +65,15 @@ export const api = {
 export interface Project {
   id: number;
   title: string;
-  abstract?: string;
   department?: string;
   fundingAgency?: string;
-  agencyScientist?: string;
-  fileNumber?: string;
   sanctionedAmount?: number;
   startDate?: string;
-  endDate?: string;
   principalInvestigator?: string;
   coPrincipalInvestigator?: string;
-  teamMembers?: { name?: string; role?: string }[] | null;
-  deliverables?: string;
-  outcomes?: string;
-  attachments?: { name?: string; url?: string }[] | null;
+  duration?: string;
   status?: string;
+  createdAt?: string;
 }
 
 export interface ProjectListParams {
@@ -266,6 +260,51 @@ export const consultancyApi = {
     axiosInstance.put(`/consultancy/${id}`, data) as unknown as Promise<{ success: boolean; data: ConsultancyRecord }>,
   delete: (id: number | string): Promise<{ success: boolean }> =>
     axiosInstance.delete(`/consultancy/${id}`) as unknown as Promise<{ success: boolean }>,
+};
+
+// ─── Publications Table API (/api/v1/publications) ───────────────────────────
+
+export interface PublicationRecord {
+  id: number;
+  title: string;
+  authors?: string | null;
+  journal_name?: string | null;
+  year?: number | null;
+  volume?: string | null;
+  issue?: string | null;
+  pages?: string | null;
+  doi?: string | null;
+  indexed_in?: string | null;
+  created_at?: string | null;
+}
+
+export interface PublicationListResponse {
+  success: boolean;
+  data: PublicationRecord[];
+  pagination: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export const publicationsTableApi = {
+  getAll: (params?: { search?: string; year?: number; indexed_in?: string; page?: number; limit?: number }): Promise<PublicationListResponse> => {
+    const qs = params
+      ? new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params)
+              .filter(([, v]) => v !== undefined && v !== '')
+              .map(([k, v]) => [k, String(v)])
+          )
+        ).toString()
+      : '';
+    return axiosInstance.get(`/v1/publications${qs ? '?' + qs : ''}`) as unknown as Promise<PublicationListResponse>;
+  },
+  getById: (id: number | string): Promise<{ success: boolean; data: PublicationRecord }> =>
+    axiosInstance.get(`/v1/publications/${id}`) as unknown as Promise<{ success: boolean; data: PublicationRecord }>,
+  create: (data: Omit<PublicationRecord, 'id' | 'created_at'>): Promise<{ success: boolean; data: PublicationRecord }> =>
+    axiosInstance.post('/v1/publications', data) as unknown as Promise<{ success: boolean; data: PublicationRecord }>,
+  update: (id: number | string, data: Partial<Omit<PublicationRecord, 'id' | 'created_at'>>): Promise<{ success: boolean; data: PublicationRecord }> =>
+    axiosInstance.put(`/v1/publications/${id}`, data) as unknown as Promise<{ success: boolean; data: PublicationRecord }>,
+  delete: (id: number | string): Promise<{ success: boolean }> =>
+    axiosInstance.delete(`/v1/publications/${id}`) as unknown as Promise<{ success: boolean }>,
 };
 
 export default axiosInstance;

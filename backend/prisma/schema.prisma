@@ -12,12 +12,13 @@ datasource db {
 
 model journal {
   S_No                   Int     @id @map("S.No.")
+  Faculty_name           String? @map("Faculty name") @db.VarChar(512)
   Name_of_authors        String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper     String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Journal    String? @map("Name of the Journal") @db.VarChar(512)
   National_International String? @map("National/ International") @db.VarChar(512)
   Date_of_Publication    String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Vol_Issue_Pg_ISBN      String? @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number") @db.VarChar(512)
+  Vol_Issue_Pg_ISBN      String? @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Nnmber") @db.VarChar(512)
   Indexing               String? @db.VarChar(512)
   Name_of_the_publisher  String? @map("Name of the publisher") @db.VarChar(512)
   DOI_of_paper           String? @map("DOI of paper") @db.VarChar(512)
@@ -25,6 +26,7 @@ model journal {
 
 model conference {
   S_No                     Int     @id @map("S.No.")
+  Faculty_name             String? @map("Faculty name") @db.VarChar(512)
   Name_of_authors          String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper       String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Conference   String? @map("Name of the Conference") @db.VarChar(512)
@@ -38,37 +40,47 @@ model conference {
 
 model bookchapter {
   S_No                            Int     @id @map("S.No.")
+  Faculty_name                    String? @map("Faculty name") @db.VarChar(512)
   Journal_Conference_Book         String? @map("Journal/ Conference/Book Chapter") @db.VarChar(512)
   Name_of_authors                 String? @map("Name of author/s") @db.VarChar(512)
   Title_of_the_paper              String? @map("Title of the paper") @db.VarChar(512)
   Name_of_the_Journal_Conference  String? @map("Name of the Journal/ Conference") @db.VarChar(512)
   National_International          String? @map("National/ International") @db.VarChar(512)
   Date_of_Publication             String? @map("Date of Publication (DDMMYYYY)") @db.VarChar(512)
-  Vol_Issue_Pg_ISBN               String? @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Number") @db.VarChar(512)
+  Vol_Issue_Pg_ISBN               String? @map("Vol. no. , Issue no., Pg. no.,ISBN/ISSN Nnmber") @db.VarChar(512)
   Indexing                        String? @db.VarChar(512)
   Name_of_the_publisher           String? @map("Name of the publisher") @db.VarChar(512)
   DOI_of_paper                    String? @map("DOI of paper") @db.VarChar(512)
 }
 
+// Maps to the actual `researchprojects` table in the database
 model researchProject {
   id                      Int       @id @default(autoincrement())
-  title                   String    @db.VarChar(512)
-  abstract                String?   @db.Text
-  department              String?   @db.VarChar(200)
-  fundingAgency           String?   @db.VarChar(200)
-  agencyScientist         String?   @db.VarChar(200)
-  fileNumber              String?   @db.VarChar(100)
-  sanctionedAmount        Float?
-  startDate               DateTime?
-  endDate                 DateTime?
-  principalInvestigator   String?   @db.VarChar(200)
-  coPrincipalInvestigator String?   @db.VarChar(200)
-  teamMembers             Json?
-  deliverables            String?   @db.Text
-  outcomes                String?   @db.Text
-  attachments             Json?
-  status                  String?   @db.VarChar(50)
-  duration                String?   @db.VarChar(100)
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
+  title                   String    @db.Text
+  principalInvestigator   String?   @map("principal_investigator") @db.Text
+  coPrincipalInvestigator String?   @map("co_investigators") @db.Text
+  department              String?   @db.Text
+  fundingAgency           String?   @map("funding_agency") @db.Text
+  startDate               DateTime? @map("sanction_date") @db.Date
+  sanctionedAmount        Float?    @map("amount_lakhs")
+  duration                String?   @db.Text
+  status                  String?   @db.VarChar(20)
+  createdAt               DateTime  @default(now()) @map("created_at")
+
+  @@map("researchprojects")
+}
+
+// Maps to the `publications` table in the database
+model publications {
+  id           Int      @id @default(autoincrement())
+  title        String   @db.Text
+  authors      String?  @db.Text
+  journal_name String?  @db.Text
+  year         Int?
+  volume       String?  @db.Text
+  issue        String?  @db.Text
+  pages        String?  @db.Text
+  doi          String?  @db.Text
+  indexed_in   String?  @db.Text
+  created_at   DateTime @default(now())
 }
