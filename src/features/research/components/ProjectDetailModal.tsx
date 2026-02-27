@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, DollarSign, Building2, User, Users, Clock } from 'lucide-react';
+import { X, Calendar, DollarSign, Building2, User, Users, Clock, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ResearchProject } from '../services/researchApi';
 
 interface ProjectDetailModalProps {
@@ -113,6 +114,15 @@ export default function ProjectDetailModal({ project, onClose }: ProjectDetailMo
                   <InfoRow icon={DollarSign} label="Sanctioned Amount" value={formatAmount(project.amount_lakhs)} />
                   <InfoRow icon={Calendar} label="Sanction Date" value={formatDate(project.sanction_date)} />
                   <InfoRow icon={Clock} label="Duration" value={project.duration} />
+                </div>
+                <div className="pt-2 border-t border-gray-100">
+                  <Link
+                    to={`/research/project/${project.id}`}
+                    onClick={onClose}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                  >
+                    <ExternalLink size={14} /> View Full Details
+                  </Link>
                 </div>
               </div>
             </div>

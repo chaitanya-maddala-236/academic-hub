@@ -187,4 +187,92 @@ const getResearchStats = async (req, res, next) => {
   }
 };
 
-module.exports = { getResearch, getResearchStats };
+/**
+ * GET /api/v1/research/:id
+ * Returns a single publication or project by its ID.
+ * Publication IDs use compound format: journal-N, conference-N, bookchapter-N
+ */
+const getResearchById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const journalMatch = id.match(/^journal-(\d+)$/);
+    const conferenceMatch = id.match(/^conference-(\d+)$/);
+    const bookchapterMatch = id.match(/^bookchapter-(\d+)$/);
+
+    if (journalMatch) {
+      const sno = parseInt(journalMatch[1], 10);
+      const j = await prisma.journal.findUnique({ where: { S_No: sno } });
+      if (!j) return res.status(404).json({ success: false, message: 'Publication not found' });
+      return res.json({
+        success: true,
+        data: {
+          id,
+          recordType: 'publication',
+          publicationType: 'journal',
+          title: j.Title_of_the_paper || null,
+          authors: j.Name_of_authors || null,
+          facultyName: j.Faculty_name || null,
+          journal: j.Name_of_the_Journal || null,
+          scope: j.National_International || null,
+          year: extractYear(j.Date_of_Publication),
+          indexing: j.Indexing ? [j.Indexing] : [],
+          publisher: j.Name_of_the_publisher || null,
+          doi: j.DOI_of_paper || null,
+        },
+      });
+    }
+
+    if (conferenceMatch) {
+      const sno = parseInt(conferenceMatch[1], 10);
+      const c = await prisma.conference.findUnique({ where: { S_No: sno } });
+      if (!c) return res.status(404).json({ success: false, message: 'Publication not found' });
+      return res.json({
+        success: true,
+        data: {
+          id,
+          recordType: 'publication',
+          publicationType: 'conference',
+          title: c.Title_of_the_paper || null,
+          authors: c.Name_of_authors || null,
+          facultyName: c.Faculty_name || null,
+          journal: c.Name_of_the_Conference || null,
+          scope: c.National_International || null,
+          year: extractYear(c.Date_of_Publication),
+          indexing: c.Indexing ? [c.Indexing] : [],
+          publisher: c.Name_of_the_publisher || null,
+          doi: c.DOI_of_paper || null,
+        },
+      });
+    }
+
+    if (bookchapterMatch) {
+      const sno = parseInt(bookchapterMatch[1], 10);
+      const b = await prisma.bookchapter.findUnique({ where: { S_No: sno } });
+      if (!b) return res.status(404).json({ success: false, message: 'Publication not found' });
+      return res.json({
+        success: true,
+        data: {
+          id,
+          recordType: 'publication',
+          publicationType: 'bookchapter',
+          title: b.Title_of_the_paper || null,
+          authors: b.Name_of_authors || null,
+          facultyName: b.Faculty_name || null,
+          journal: b.Name_of_the_Journal_Conference || null,
+          scope: b.National_International || null,
+          year: extractYear(b.Date_of_Publication),
+          indexing: b.Indexing ? [b.Indexing] : [],
+          publisher: b.Name_of_the_publisher || null,
+          doi: b.DOI_of_paper || null,
+        },
+      });
+    }
+
+    return res.status(400).json({ success: false, message: 'Invalid research item ID format' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getResearch, getResearchStats, getResearchById };

@@ -1,21 +1,15 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/services/api";
 import axiosInstance from "@/services/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowLeft,
-  Download,
   ExternalLink,
   BookOpen,
   FolderKanban,
   DollarSign,
-  Users,
-  Target,
-  CheckSquare,
-  TrendingUp,
   Info,
 } from "lucide-react";
 
@@ -72,23 +66,28 @@ function MetaRow({ label, value }: { label: string; value?: string | number | nu
 
 // ─── Publication Detail ───────────────────────────────────────────────────────
 function PublicationDetailView({ id }: { id: string }) {
-  const { data, isLoading } = useQuery({
+  const { data: resp, isLoading } = useQuery({
     queryKey: ["research-pub", id],
-    queryFn: async () => {
-      const response = await api.get<any>(`/publications/${id}`, false);
-      return response.data;
-    },
+    queryFn: () =>
+      axiosInstance.get<unknown, { success: boolean; data: any }>(`/v1/research/${id}`),
     enabled: !!id,
   });
 
   if (isLoading) return <LoadingState />;
-  if (!data) return <NotFoundState type="publication" />;
+  const pub = resp?.data;
+  if (!pub) return <NotFoundState type="publication" />;
 
-  const pub = data;
-  // pub.indexing is a single string from the legacy DB; wrap if present
-  const indexingList: string[] = pub.indexing
-    ? Array.isArray(pub.indexing) ? pub.indexing : [pub.indexing]
+  const indexingList: string[] = Array.isArray(pub.indexing)
+    ? pub.indexing
+    : pub.indexing
+    ? [pub.indexing]
     : [];
+  const pubTypeMap: Record<string, string> = {
+    journal: 'Journal',
+    conference: 'Conference',
+    bookchapter: 'Book Chapter',
+  };
+  const typeLabel = pubTypeMap[pub.publicationType] ?? pub.publicationType ?? 'Publication';
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -105,14 +104,14 @@ function PublicationDetailView({ id }: { id: string }) {
         className="rounded-xl p-6"
         style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5E7EB", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
       >
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <BookOpen size={18} style={{ color: "#2563EB" }} />
           <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#DBEAFE", color: "#2563EB" }}>
-            Publication
+            {typeLabel}
           </span>
           {pub.year && <Badge variant="outline">{pub.year}</Badge>}
-          {pub.national_international && (
-            <Badge variant="secondary" className="capitalize">{pub.national_international}</Badge>
+          {pub.scope && (
+            <Badge variant="secondary" className="capitalize">{pub.scope}</Badge>
           )}
         </div>
         <h1 className="text-2xl font-bold leading-tight" style={{ color: "#111827" }}>
@@ -131,36 +130,21 @@ function PublicationDetailView({ id }: { id: string }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Basic Info */}
         <MetaCard title="Basic Information" icon={Info}>
-          <MetaRow label="Faculty" value={pub.faculty_name} />
+          <MetaRow label="Faculty" value={pub.facultyName} />
           <MetaRow label="Authors" value={pub.authors} />
-          <MetaRow label="Department" value={pub.department} />
           <MetaRow label="Year" value={pub.year} />
-          <MetaRow label="Type" value={pub.publication_type} />
+          <MetaRow label="Type" value={typeLabel} />
+          <MetaRow label="Scope" value={pub.scope} />
         </MetaCard>
 
         {/* Indexing Info */}
         <MetaCard title="Indexing & Publication" icon={BookOpen}>
-          <MetaRow label="Journal / Conference" value={pub.journal_name || pub.conference_name} />
+          <MetaRow label="Journal / Conference" value={pub.journal} />
           <MetaRow label="Publisher" value={pub.publisher} />
-          <MetaRow label="Indexing" value={pub.indexing} />
-          <MetaRow label="Scope" value={pub.national_international} />
+          <MetaRow label="Indexing" value={indexingList.join(', ') || null} />
           <MetaRow label="DOI" value={pub.doi} />
         </MetaCard>
       </div>
-
-      {/* Abstract */}
-      {pub.abstract && (
-        <MetaCard title="Abstract" icon={Target}>
-          <p className="text-sm leading-relaxed" style={{ color: "#374151" }}>{pub.abstract}</p>
-        </MetaCard>
-      )}
-
-      {/* Outcomes placeholder */}
-      <MetaCard title="Outcomes & Impact" icon={TrendingUp}>
-        <p className="text-sm" style={{ color: "#9CA3AF" }}>
-          {pub.outcomes ?? "No outcomes recorded yet."}
-        </p>
-      </MetaCard>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
@@ -176,10 +160,6 @@ function PublicationDetailView({ id }: { id: string }) {
             </a>
           </Button>
         )}
-        {/* Placeholder PDF download */}
-        <Button variant="outline" disabled title="PDF download coming soon">
-          <Download className="mr-2 h-4 w-4" /> Download PDF
-        </Button>
       </div>
     </div>
   );
@@ -198,10 +178,6 @@ function ProjectDetailView({ id }: { id: string }) {
   const project = resp?.data;
   if (!project) return <NotFoundState type="project" />;
 
-  const teamList: { name?: string; role?: string }[] = Array.isArray(project.teamMembers)
-    ? project.teamMembers
-    : [];
-
   return (
     <div className="space-y-6 max-w-4xl">
       <Link
@@ -219,7 +195,7 @@ function ProjectDetailView({ id }: { id: string }) {
       >
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
               <FolderKanban size={18} style={{ color: "#16A34A" }} />
               <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: "#DCFCE7", color: "#16A34A" }}>
                 Project
@@ -244,80 +220,24 @@ function ProjectDetailView({ id }: { id: string }) {
         <MetaCard title="Basic Information" icon={Info}>
           <MetaRow label="Department" value={project.department} />
           <MetaRow label="Principal Investigator" value={project.principalInvestigator} />
-          <MetaRow label="Co-PI" value={project.coPrincipalInvestigator} />
-          <MetaRow label="File Number" value={project.fileNumber} />
+          <MetaRow label="Co-Investigators" value={project.coPrincipalInvestigator} />
           <MetaRow label="Status" value={project.status} />
         </MetaCard>
 
         {/* Financial Info */}
         <MetaCard title="Financial Information" icon={DollarSign}>
           <MetaRow label="Funding Agency" value={project.fundingAgency} />
-          <MetaRow label="Agency Scientist" value={project.agencyScientist} />
           <MetaRow
             label="Sanctioned Amount"
-            value={project.sanctionedAmount != null ? `₹${Number(project.sanctionedAmount).toLocaleString()}` : null}
+            value={project.sanctionedAmount != null ? `₹${Number(project.sanctionedAmount).toLocaleString()} Lakhs` : null}
           />
           <MetaRow
-            label="Start Date"
-            value={project.startDate ? new Date(project.startDate).toLocaleDateString() : null}
+            label="Sanction Date"
+            value={project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : null}
           />
-          <MetaRow
-            label="End Date"
-            value={project.endDate ? new Date(project.endDate).toLocaleDateString() : null}
-          />
+          <MetaRow label="Duration" value={project.duration} />
         </MetaCard>
       </div>
-
-      {/* Abstract */}
-      {project.abstract && (
-        <MetaCard title="Abstract / Objectives" icon={Target}>
-          <p className="text-sm leading-relaxed" style={{ color: "#374151" }}>{project.abstract}</p>
-        </MetaCard>
-      )}
-
-      {/* Deliverables */}
-      {project.deliverables && (
-        <MetaCard title="Deliverables" icon={CheckSquare}>
-          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#374151" }}>
-            {project.deliverables}
-          </p>
-        </MetaCard>
-      )}
-
-      {/* Outcomes */}
-      {project.outcomes && (
-        <MetaCard title="Outcomes" icon={TrendingUp}>
-          <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#374151" }}>
-            {project.outcomes}
-          </p>
-        </MetaCard>
-      )}
-
-      {/* Team */}
-      {teamList.length > 0 && (
-        <MetaCard title="Team Members" icon={Users}>
-          <div className="space-y-2">
-            {teamList.map((m, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                style={{ backgroundColor: "#F8FAFC", border: "1px solid #E5E7EB" }}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                  style={{ backgroundColor: "#DBEAFE", color: "#2563EB" }}
-                >
-                  {(m.name ?? "?")[0]}
-                </div>
-                <div>
-                  <p className="text-sm font-medium" style={{ color: "#111827" }}>{m.name ?? "—"}</p>
-                  <p className="text-xs" style={{ color: "#6B7280" }}>{m.role ?? "—"}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </MetaCard>
-      )}
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-3">
@@ -325,10 +245,6 @@ function ProjectDetailView({ id }: { id: string }) {
           <Link to="/research">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back
           </Link>
-        </Button>
-        {/* Placeholder PDF download */}
-        <Button variant="outline" disabled title="PDF download coming soon">
-          <Download className="mr-2 h-4 w-4" /> Download PDF
         </Button>
       </div>
     </div>
