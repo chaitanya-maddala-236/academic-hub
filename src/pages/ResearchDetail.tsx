@@ -220,7 +220,9 @@ function ProjectDetailView({ id }: { id: string }) {
         <MetaCard title="Basic Information" icon={Info}>
           <MetaRow label="Department" value={project.department} />
           <MetaRow label="Principal Investigator" value={project.principalInvestigator} />
-          <MetaRow label="Co-Investigators" value={project.coPrincipalInvestigator} />
+          {project.coPrincipalInvestigator && (
+            <MetaRow label="Co-Investigators" value={project.coPrincipalInvestigator} />
+          )}
           <MetaRow label="Status" value={project.status} />
         </MetaCard>
 

@@ -97,6 +97,22 @@ model ongoing_consultancy {
   status                 String?   @db.VarChar
 }
 
+model academic_project {
+  id            Int     @id @default(autoincrement())
+  Btech         String? @map("Btech") @db.VarChar(512)
+  Roll_No       String? @map("Roll No") @db.VarChar(100)
+  Student_Name  String? @map("Student Name") @db.VarChar(512)
+  Branch        String? @map("Branch") @db.VarChar(100)
+  Section       String? @map("Section") @db.VarChar(50)
+  Batch_No      Int?    @map("Batch No")
+  Project_Title String? @map("Project Title") @db.VarChar(512)
+  Guide_Name    String? @map("Guide Name") @db.VarChar(512)
+  Project_Domain String? @map("Project Domain") @db.VarChar(512)
+  Academic_Year String? @map("Academic Year") @db.VarChar(50)
+
+  @@map("academic_project")
+}
+
 enum ProjectStatus {
   ONGOING
   COMPLETED
