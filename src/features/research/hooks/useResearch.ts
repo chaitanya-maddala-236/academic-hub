@@ -28,7 +28,7 @@ interface UseResearchResult {
 export function useResearch(): UseResearchResult {
   const [allItems, setAllItems] = useState<ResearchItem[]>([]);
   const [stats, setStats] = useState<ResearchStats | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearchState] = useState('');

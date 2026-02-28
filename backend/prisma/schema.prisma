@@ -19,7 +19,6 @@ model journal {
   Indexing                                       String?  @db.VarChar(512)
   Name_of_the_publisher                          String?  @map("Name of the publisher") @db.VarChar(512)
   DOI_of_paper                                   String?  @map("DOI of paper") @db.VarChar(512)
-  journal_Vol_                                   String?  @map("journal.Vol.")
 }
 
 model conference {

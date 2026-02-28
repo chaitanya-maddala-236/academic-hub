@@ -33,60 +33,72 @@ const getResearch = async (req, res, next) => {
     const includeProjects = type === 'all' || type === 'project';
 
     if (includePublications || type === 'journal') {
-      const journals = await prisma.journal.findMany({ where: pubSearchWhere });
-      journals.forEach((j) =>
-        items.push({
-          recordType: 'publication',
-          id: `journal-${j.S_No}`,
-          title: j.Title_of_the_paper || null,
-          year: extractYear(j.Date_of_Publication),
-          authors: j.Name_of_authors || null,
-          journal: j.Name_of_the_Journal || null,
-          publicationType: 'journal',
-          indexing: j.Indexing ? [j.Indexing] : [],
-          doi: j.DOI_of_paper || null,
-          scope: j.National_International || null,
-          facultyName: j.Faculty_name || null,
-        })
-      );
+      try {
+        const journals = await prisma.journal.findMany({ where: pubSearchWhere });
+        journals.forEach((j) =>
+          items.push({
+            recordType: 'publication',
+            id: `journal-${j.S_No}`,
+            title: j.Title_of_the_paper || null,
+            year: extractYear(j.Date_of_Publication),
+            authors: j.Name_of_authors || null,
+            journal: j.Name_of_the_Journal || null,
+            publicationType: 'journal',
+            indexing: j.Indexing ? [j.Indexing] : [],
+            doi: j.DOI_of_paper || null,
+            scope: j.National_International || null,
+            facultyName: j.Faculty_name || null,
+          })
+        );
+      } catch (journalErr) {
+        console.warn('[research] Failed to load journal publications:', journalErr);
+      }
     }
 
     if (includePublications || type === 'conference') {
-      const conferences = await prisma.conference.findMany({ where: pubSearchWhere });
-      conferences.forEach((c) =>
-        items.push({
-          recordType: 'publication',
-          id: `conference-${c.S_No}`,
-          title: c.Title_of_the_paper || null,
-          year: extractYear(c.Date_of_Publication),
-          authors: c.Name_of_authors || null,
-          journal: c.Name_of_the_Conference || null,
-          publicationType: 'conference',
-          indexing: c.Indexing ? [c.Indexing] : [],
-          doi: c.DOI_of_paper || null,
-          scope: c.National_International || null,
-          facultyName: c.Faculty_name || null,
-        })
-      );
+      try {
+        const conferences = await prisma.conference.findMany({ where: pubSearchWhere });
+        conferences.forEach((c) =>
+          items.push({
+            recordType: 'publication',
+            id: `conference-${c.S_No}`,
+            title: c.Title_of_the_paper || null,
+            year: extractYear(c.Date_of_Publication),
+            authors: c.Name_of_authors || null,
+            journal: c.Name_of_the_Conference || null,
+            publicationType: 'conference',
+            indexing: c.Indexing ? [c.Indexing] : [],
+            doi: c.DOI_of_paper || null,
+            scope: c.National_International || null,
+            facultyName: c.Faculty_name || null,
+          })
+        );
+      } catch (confErr) {
+        console.warn('[research] Failed to load conference publications:', confErr);
+      }
     }
 
     if (includePublications || type === 'bookchapter') {
-      const bookchapters = await prisma.bookchapter.findMany({ where: pubSearchWhere });
-      bookchapters.forEach((b) =>
-        items.push({
-          recordType: 'publication',
-          id: `bookchapter-${b.S_No}`,
-          title: b.Title_of_the_paper || null,
-          year: extractYear(b.Date_of_Publication),
-          authors: b.Name_of_authors || null,
-          journal: b.Name_of_the_Journal_Conference || null,
-          publicationType: 'bookchapter',
-          indexing: b.Indexing ? [b.Indexing] : [],
-          doi: b.DOI_of_paper || null,
-          scope: b.National_International || null,
-          facultyName: b.Faculty_name || null,
-        })
-      );
+      try {
+        const bookchapters = await prisma.bookchapter.findMany({ where: pubSearchWhere });
+        bookchapters.forEach((b) =>
+          items.push({
+            recordType: 'publication',
+            id: `bookchapter-${b.S_No}`,
+            title: b.Title_of_the_paper || null,
+            year: extractYear(b.Date_of_Publication),
+            authors: b.Name_of_authors || null,
+            journal: b.Name_of_the_Journal_Conference || null,
+            publicationType: 'bookchapter',
+            indexing: b.Indexing ? [b.Indexing] : [],
+            doi: b.DOI_of_paper || null,
+            scope: b.National_International || null,
+            facultyName: b.Faculty_name || null,
+          })
+        );
+      } catch (bookErr) {
+        console.warn('[research] Failed to load bookchapter publications:', bookErr);
+      }
     }
 
     if (includeProjects) {
