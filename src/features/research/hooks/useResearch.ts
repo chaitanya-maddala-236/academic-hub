@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { unifiedResearchApi, ResearchItem, ResearchStats } from '../services/researchApi';
 
-export type ActiveTab = 'all' | 'ongoing' | 'completed';
+export type ActiveTab = 'all' | 'publication' | 'project';
 
 const ITEMS_PER_PAGE = 12;
 
@@ -22,7 +22,7 @@ interface UseResearchResult {
   page: number;
   setPage: (p: number) => void;
   totalPages: number;
-  tabCounts: { all: number; ongoing: number; completed: number };
+  tabCounts: { all: number; publication: number; project: number };
 }
 
 export function useResearch(): UseResearchResult {
@@ -42,7 +42,7 @@ export function useResearch(): UseResearchResult {
     setLoading(true);
     setError(null);
     unifiedResearchApi
-      .getResearch({ type: 'project', limit: 1000 })
+      .getResearch({ type: 'all', limit: 1000 })
       .then((res) => {
         if (!cancelled) setAllItems(res.data ?? []);
       })
@@ -74,18 +74,18 @@ export function useResearch(): UseResearchResult {
   // Compute tab counts from all items
   const tabCounts = useMemo(() => ({
     all: allItems.length,
-    ongoing: allItems.filter((i) => i.status?.toLowerCase() === 'ongoing').length,
-    completed: allItems.filter((i) => i.status?.toLowerCase() === 'completed').length,
+    publication: allItems.filter((i) => i.recordType === 'publication').length,
+    project: allItems.filter((i) => i.recordType === 'project').length,
   }), [allItems]);
 
   // Apply filters client-side
   const filteredItems = useMemo(() => {
     let items = [...allItems];
 
-    if (activeTab === 'ongoing') {
-      items = items.filter((i) => i.status?.toLowerCase() === 'ongoing');
-    } else if (activeTab === 'completed') {
-      items = items.filter((i) => i.status?.toLowerCase() === 'completed');
+    if (activeTab === 'publication') {
+      items = items.filter((i) => i.recordType === 'publication');
+    } else if (activeTab === 'project') {
+      items = items.filter((i) => i.recordType === 'project');
     }
 
     if (department) {

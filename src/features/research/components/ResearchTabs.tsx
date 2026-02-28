@@ -1,23 +1,26 @@
+import React from 'react';
 import { motion } from 'framer-motion';
+import { BookOpen, FolderKanban, LayoutGrid } from 'lucide-react';
 import { ActiveTab } from '../hooks/useResearch';
 
 interface Tab {
   key: ActiveTab;
   label: string;
   count: number;
+  icon: React.ElementType;
 }
 
 interface ResearchTabsProps {
   activeTab: ActiveTab;
   onChange: (tab: ActiveTab) => void;
-  counts: { all: number; ongoing: number; completed: number };
+  counts: { all: number; publication: number; project: number };
 }
 
 export default function ResearchTabs({ activeTab, onChange, counts }: ResearchTabsProps) {
   const tabs: Tab[] = [
-    { key: 'all', label: 'All Research', count: counts.all },
-    { key: 'ongoing', label: 'Ongoing', count: counts.ongoing },
-    { key: 'completed', label: 'Completed', count: counts.completed },
+    { key: 'all', label: 'All Research', count: counts.all, icon: LayoutGrid },
+    { key: 'publication', label: 'Publications', count: counts.publication, icon: BookOpen },
+    { key: 'project', label: 'Projects', count: counts.project, icon: FolderKanban },
   ];
 
   return (
@@ -27,6 +30,7 @@ export default function ResearchTabs({ activeTab, onChange, counts }: ResearchTa
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
+        const Icon = tab.icon;
         return (
           <motion.button
             key={tab.key}
@@ -38,6 +42,7 @@ export default function ResearchTabs({ activeTab, onChange, counts }: ResearchTa
               color: isActive ? '#FFFFFF' : '#374151',
             }}
           >
+            <Icon size={15} />
             {tab.label}
             <span
               className="text-xs px-1.5 py-0.5 rounded-full"
