@@ -48,7 +48,7 @@ const mapBookchapter = (b) => ({
   authors: b.Name_of_authors || null,
   journal_name: b.Name_of_the_Journal_Conference || null,
   publication_type: 'bookchapter',
-year: extractYear(b.Date_of__Publication),
+year: extractYear(b.Date_of_Publication),
   indexing: b.Indexing || null,
   national_international: b.National_International || null,
   doi: b.DOI_of_paper || null,
@@ -84,18 +84,21 @@ const getAllPublications = async (req, res, next) => {
 
     const items = [];
 
-    if (!publication_type || publication_type === 'journal') {
-      const rows = await prisma.journal.findMany({ where: searchWhere });
-      rows.forEach((r) => items.push(mapJournal(r)));
-    }
-    if (!publication_type || publication_type === 'conference') {
-      const rows = await prisma.conference.findMany({ where: searchWhere });
-      rows.forEach((r) => items.push(mapConference(r)));
-    }
-    if (!publication_type || publication_type === 'bookchapter') {
-      const rows = await prisma.bookchapter.findMany({ where: searchWhere });
-      rows.forEach((r) => items.push(mapBookchapter(r)));
-    }
+    const [journals, conferences, bookchapters] = await Promise.all([
+      (!publication_type || publication_type === 'journal')
+        ? prisma.journal.findMany({ where: searchWhere })
+        : Promise.resolve([]),
+      (!publication_type || publication_type === 'conference')
+        ? prisma.conference.findMany({ where: searchWhere })
+        : Promise.resolve([]),
+      (!publication_type || publication_type === 'bookchapter')
+        ? prisma.bookchapter.findMany({ where: searchWhere })
+        : Promise.resolve([]),
+    ]);
+
+    journals.forEach((r) => items.push(mapJournal(r)));
+    conferences.forEach((r) => items.push(mapConference(r)));
+    bookchapters.forEach((r) => items.push(mapBookchapter(r)));
 
     // Filter by year if specified
     const filtered = year

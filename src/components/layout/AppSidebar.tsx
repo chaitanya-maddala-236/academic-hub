@@ -20,7 +20,7 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Research", url: "/research", icon: Microscope },
   { title: "Publications", url: "/publications", icon: BookOpen },
-  { title: "Academic Projects", url: "/academic-projects", icon: GraduationCap, placeholder: true },
+  { title: "Academic Projects", url: "/academic-projects", icon: GraduationCap },
   { title: "Patents", url: "/patents", icon: ShieldCheck, placeholder: true },
   { title: "IP Assets", url: "/ip-assets", icon: Lightbulb, placeholder: true },
   { title: "Consultancy Works", url: "/consultancy", icon: Banknote },
