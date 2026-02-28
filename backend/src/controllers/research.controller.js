@@ -113,7 +113,7 @@ const getResearch = async (req, res, next) => {
             agency: p.fundingAgency || null,
             pi: p.principalInvestigator || null,
             coPi: p.coPrincipalInvestigator || null,
-            amount: p.sanctionedAmount ?? null,
+            amount: p.sanctionedAmount != null ? Number(p.sanctionedAmount) : null,
             status: p.status ? p.status.toLowerCase() : null,
             startDate: p.startDate ? p.startDate.toISOString() : null,
             createdAt: p.createdAt ? p.createdAt.toISOString() : null,
